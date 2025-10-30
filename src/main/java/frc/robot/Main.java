@@ -4,14 +4,12 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.TimedRobot;
-import frc.util.LightningRobot;
+import edu.wpi.first.wpilibj.RobotBase;
 
-public class Robot extends TimedRobot {
+public final class Main {
+    private Main() {}
 
-  @SuppressWarnings("resource")
-  public Robot() {
-    new LightningRobot(new RobotContainer());
-  }
-
+    public static void main(String... args) {
+        RobotBase.startRobot(Robot::new);
+    }
 }
