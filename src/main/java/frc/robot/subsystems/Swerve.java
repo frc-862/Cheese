@@ -19,14 +19,19 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
+import static edu.wpi.first.wpilibj2.command.Commands.waitSeconds;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.Constants.AutonomousConstants;
 import frc.robot.Constants.DrivetrainConstants.DriveRequests;
 import frc.robot.Constants.DrivetrainConstants.TunerConstants.TunerSwerveDrivetrain;;
@@ -357,5 +362,42 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
             setOperatorPerspectiveForward(DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red ? 
                 kBlueAlliancePerspectiveRotation : kRedAlliancePerspectiveRotation);
         });
+    }
+
+    /**
+     * Runs the full SysId routine for translation, steering, and rotation.
+     * @return command to run sysid routine
+     */
+    public Command sysId(double timeoutSeconds, double waitSeconds) {
+        
+        Command sysIdCommand = new SequentialCommandGroup(
+
+            new InstantCommand(() -> DataLogManager.log("\033[0;35m\033[1mSYSID Start Translation\033[0m")),
+            m_sysIdRoutineTranslation.dynamic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineTranslation.dynamic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineTranslation.quasistatic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineTranslation.quasistatic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            new InstantCommand(() -> DataLogManager.log("\033[0;35m\033[1mSYSID Start Steer\033[0m")),
+            m_sysIdRoutineSteer.dynamic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineSteer.dynamic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineSteer.quasistatic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineSteer.quasistatic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            new InstantCommand(() -> DataLogManager.log("\033[0;35m\033[1mSYSID Start Rotation\033[0m")),
+            m_sysIdRoutineRotation.dynamic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineRotation.dynamic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineRotation.quasistatic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineRotation.quasistatic(Direction.kReverse).withTimeout(timeoutSeconds),
+            new InstantCommand(() -> DataLogManager.log("\033[0;35mSYSID End\033[0m"))
+        );
+        sysIdCommand.addRequirements(this);
+
+        return sysIdCommand;
+    }
+
+    /**
+     * @return command to run sysid routine
+     */
+    public Command sysId() {
+        return sysId(20, 1); // default timeout of 20s and wait of 1s; these values are arbitrary
     }
 }

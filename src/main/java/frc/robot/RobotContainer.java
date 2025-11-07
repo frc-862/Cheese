@@ -16,6 +16,8 @@ import frc.util.leds.LEDSubsystem;
 import frc.util.LightningContainer;
 import frc.util.shuffleboard.LightningShuffleboard;
 
+import static edu.wpi.first.units.Units.MetersPerSecond;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 
 import edu.wpi.first.wpilibj.XboxController;
@@ -28,6 +30,7 @@ public class RobotContainer extends LightningContainer {
     private SendableChooser<Command> autoChooser;
     private Swerve drivetrain;
     private XboxController driver;
+    private Telemetry logger;
 
     private LEDSubsystem leds;
  
@@ -38,6 +41,9 @@ public class RobotContainer extends LightningContainer {
         leds = new LEDSubsystem(LED_STATES.values().length, LEDConstants.LED_LENGTH, LEDConstants.LED_PWM_PORT);
 
         driver = new XboxController(ControllerConstants.DRIVER_PORT);
+
+        logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
+        drivetrain.registerTelemetry(logger::telemeterize);
     }
 
     @Override
@@ -84,6 +90,9 @@ public class RobotContainer extends LightningContainer {
 
         // reset field forward
         new Trigger(() -> driver.getStartButton() && driver.getBackButton()).onTrue(drivetrain.commandResetFieldForward());
+
+        // SysId command
+        // new Trigger(driver::getYButton).whileTrue(drivetrain.sysId());
     }
 
     @Override
