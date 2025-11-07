@@ -67,7 +67,7 @@ public final class Constants {
 
         // The steer motor uses any SwerveModule.SteerRequestType control request with the
         // output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
-        private static final Slot0Configs steerGains = new Slot0Configs()
+        private static final Slot0Configs steerGains = new Slot0Configs() // TODO: tune with SysId
             .withKP(100).withKI(0).withKD(0.5)
             .withKS(0.1).withKV(2.66).withKA(0)
             .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign);
@@ -95,7 +95,7 @@ public final class Constants {
 
         // The stator current at which the wheels start to slip;
         // This needs to be tuned to your individual robot
-        private static final Current kSlipCurrent = Amps.of(120.0);
+        private static final Current kSlipCurrent = Amps.of(120.0); // TODO: tune this
 
         // Initial configs for the drive and steer motors and the azimuth encoder; these cannot be null.
         // Some configs will be overwritten; check the `with*InitialConfigs()` API documentation.
@@ -351,29 +351,29 @@ public final class Constants {
 
             public static Supplier<SwerveRequest> getDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
                 return () -> DRIVE
-                        .withVelocityX(x.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
-                        .withVelocityY(y.getAsDouble() * MAX_SPEED) // Drive left with negative X
-                        .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE)
-                        .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
-                        .withDeadband(ControllerConstants.DEADBAND)
-                        .withRotationalDeadband(ControllerConstants.DEADBAND)
-                        .withForwardPerspective(ForwardPerspectiveValue.OperatorPerspective); // Drive counterclockwise with negative
-                                                                                 // X (left)
+                    .withVelocityX(x.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
+                    .withVelocityY(y.getAsDouble() * MAX_SPEED) // Drive left with negative X
+                    .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE)
+                    .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
+                    .withDeadband(ControllerConstants.DEADBAND)
+                    .withRotationalDeadband(ControllerConstants.DEADBAND)
+                    .withForwardPerspective(ForwardPerspectiveValue.OperatorPerspective); // Drive counterclockwise with negative
+                                                                               // X (left)
                                                                         
             }
 
             public static Supplier<SwerveRequest> getRobotCentric(DoubleSupplier x, DoubleSupplier y,
                     DoubleSupplier rot) {
                 return () -> ROBO_CENTRIC
-                        .withVelocityX(y.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
-                                                                                        // (forward)
-                        .withVelocityY(x.getAsDouble() * MAX_SPEED) // Drive left with negative X
-                                                                                        // (left)
-                        .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE) // Drive counterclockwise with negative
-                                                                                 // X (left)
-                        .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
-                        .withDeadband(ControllerConstants.DEADBAND)
-                        .withRotationalDeadband(ControllerConstants.DEADBAND);
+                    .withVelocityX(y.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
+                                                                                    // (forward)
+                    .withVelocityY(x.getAsDouble() * MAX_SPEED) // Drive left with negative X
+                                                                                    // (left)
+                    .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE) // Drive counterclockwise with negative
+                                                                             // X (left)
+                    .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
+                    .withDeadband(ControllerConstants.DEADBAND)
+                    .withRotationalDeadband(ControllerConstants.DEADBAND);
             }
 
             public static Supplier<SwerveRequest> getBrake() {
@@ -387,17 +387,17 @@ public final class Constants {
         public static final PIDConstants ROTATION_PID = new PIDConstants(5, 0, 0);
 
         private static final double TRACK_WIDTH = Units.inchesToMeters(22);
-        private static final Mass ROBOT_MASS = Pounds.of(147);
-        private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(5.2268411);
+        private static final Mass ROBOT_MASS = Pounds.of(147); // TODO: update from CAD
+        private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(5.2268411); // TODO: update from CAD
         private static final ModuleConfig MODULE_CONFIG = new ModuleConfig(
-                TunerConstants.kWheelRadius, TunerConstants.kSpeedAt12Volts,
-                1.916, DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
-                Amps.of(120), 1);
+            TunerConstants.kWheelRadius, TunerConstants.kSpeedAt12Volts,
+            1.916, DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
+            Amps.of(120), 1);
 
         public static final RobotConfig CONFIG = new RobotConfig(ROBOT_MASS, ROBOT_MOI, MODULE_CONFIG,
-                new Translation2d[] { new Translation2d(TRACK_WIDTH / 2, TRACK_WIDTH / 2),
-                        new Translation2d(TRACK_WIDTH / 2, -TRACK_WIDTH / 2),
-                        new Translation2d(-TRACK_WIDTH / 2, TRACK_WIDTH / 2),
-                        new Translation2d(-TRACK_WIDTH / 2, -TRACK_WIDTH / 2) });
+            new Translation2d[] { new Translation2d(TRACK_WIDTH / 2, TRACK_WIDTH / 2),
+                new Translation2d(TRACK_WIDTH / 2, -TRACK_WIDTH / 2),
+                new Translation2d(-TRACK_WIDTH / 2, TRACK_WIDTH / 2),
+                new Translation2d(-TRACK_WIDTH / 2, -TRACK_WIDTH / 2) });
     }
 }

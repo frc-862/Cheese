@@ -336,18 +336,26 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     private void configurePathPlanner() {
         AutoBuilder.configure(
-                this::getPose, // Supplier of current robot pose
-                this::resetPose, // Consumer for seeding pose against auto
-                this::getCurrentRobotChassisSpeeds,
+            this::getPose, // Supplier of current robot pose
+            this::resetPose, // Consumer for seeding pose against auto
+            this::getCurrentRobotChassisSpeeds,
                 (speeds, feedforwards) -> this
-                        .setControl(DriveRequests.AUTON.withSpeeds(speeds).withDriveRequestType(DriveRequestType.Velocity)
-                                .withWheelForceFeedforwardsX(feedforwards.robotRelativeForcesX())
-                                .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesY())), // Consumer of
+                    .setControl(DriveRequests.AUTON.withSpeeds(speeds).withDriveRequestType(DriveRequestType.Velocity)
+                        .withWheelForceFeedforwardsX(feedforwards.robotRelativeForcesX())
+                        .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesY())), // Consumer of
                                                                                                     // ChassisSpeeds to
                                                                                                     // drive the robot
-                new PPHolonomicDriveController(AutonomousConstants.TRANSLATION_PID, AutonomousConstants.ROTATION_PID),
-                AutonomousConstants.CONFIG,
-                () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
-                this); // Subsystem for requirements
+            new PPHolonomicDriveController(AutonomousConstants.TRANSLATION_PID, AutonomousConstants.ROTATION_PID),
+            AutonomousConstants.CONFIG,
+            () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
+            this); // Subsystem for requirements
+    }
+
+    public Command commandResetFieldForward() {
+        return new InstantCommand(() -> {
+            seedFieldCentric();
+            setOperatorPerspectiveForward(DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red ? 
+                kBlueAlliancePerspectiveRotation : kRedAlliancePerspectiveRotation);
+        });
     }
 }

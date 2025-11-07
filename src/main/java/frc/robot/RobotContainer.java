@@ -22,11 +22,13 @@ public class RobotContainer extends LightningContainer {
 
     private SendableChooser<Command> autoChooser;
     private Swerve drivetrain;
-    private XboxController driver = new XboxController(ControllerConstants.DRIVER_PORT);
+    private XboxController driver;
  
     @Override
     protected void initializeSubsystems() {
         drivetrain = TunerConstants.createDrivetrain();
+
+        driver = new XboxController(ControllerConstants.DRIVER_PORT);
     }
 
     @Override
@@ -53,7 +55,10 @@ public class RobotContainer extends LightningContainer {
                 () -> -driver.getRightX() * Swerve.getSpeedMults()[1])));
 
         // brake
-        new Trigger(() -> driver.getXButton()).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
+        new Trigger(driver::getXButton).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
+
+        // reset field forward
+        new Trigger(() -> driver.getStartButton() && driver.getBackButton()).onTrue(drivetrain.commandResetFieldForward());
     }
 
     @Override
