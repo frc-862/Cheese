@@ -9,12 +9,13 @@ import frc.robot.Constants.DrivetrainConstants.TunerConstants;
 import frc.robot.Constants.ControllerConstants;
 import frc.robot.subsystems.Swerve;
 import frc.util.LightningContainer;
+import frc.util.shuffleboard.LightningShuffleboard;
 
-import edu.wpi.first.math.MathUtil;
+import com.pathplanner.lib.auto.AutoBuilder;
+
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 public class RobotContainer extends LightningContainer {
@@ -32,9 +33,9 @@ public class RobotContainer extends LightningContainer {
     protected void configureDefaultCommands() {
 
         drivetrain.setDefaultCommand(drivetrain.applyRequest(DriveRequests.getDrive(
-                () -> -MathUtil.applyDeadband(-driver.getLeftY(), ControllerConstants.DEADBAND)  * Swerve.getSpeedMults()[0],
-                () -> -MathUtil.applyDeadband(-driver.getLeftX(), ControllerConstants.DEADBAND) * Swerve.getSpeedMults()[0],
-                () -> -MathUtil.applyDeadband(-driver.getRightX(), ControllerConstants.DEADBAND) * Swerve.getSpeedMults()[1])));
+                () -> -driver.getLeftY() * Swerve.getSpeedMults()[0],
+                () -> -driver.getLeftX() * Swerve.getSpeedMults()[0],
+                () -> -driver.getRightX() * Swerve.getSpeedMults()[1])));
     }
 
     @Override
@@ -47,9 +48,9 @@ public class RobotContainer extends LightningContainer {
         // Robot Centric
         new Trigger(() -> driver.getLeftTriggerAxis() > 0.25)
             .whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-                () -> -MathUtil.applyDeadband(-driver.getLeftY(), ControllerConstants.DEADBAND)  * Swerve.getSpeedMults()[0],
-                () -> -MathUtil.applyDeadband(-driver.getLeftX(), ControllerConstants.DEADBAND) * Swerve.getSpeedMults()[0],
-                () -> -MathUtil.applyDeadband(-driver.getRightX(), ControllerConstants.DEADBAND) * Swerve.getSpeedMults()[1])));
+                () -> -driver.getLeftY() * Swerve.getSpeedMults()[0],
+                () -> -driver.getLeftX() * Swerve.getSpeedMults()[0],
+                () -> -driver.getRightX() * Swerve.getSpeedMults()[1])));
 
         // brake
         new Trigger(() -> driver.getXButton()).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
@@ -57,13 +58,12 @@ public class RobotContainer extends LightningContainer {
 
     @Override
     protected void initializeNamedCommands() {
-        // autoChooser = AutoBuilder.buildAutoChooser();
-        // LightningShuffleboard.send("Auton", "Auto Chooser", autoChooser);
+        autoChooser = AutoBuilder.buildAutoChooser();
+        LightningShuffleboard.send("Auton", "Auto Chooser", autoChooser);
     }
 
     @Override
     protected Command getAutonomousCommand() {
-        // return autoChooser.getSelected();
-        return new InstantCommand();
+        return autoChooser.getSelected();
     }
 }

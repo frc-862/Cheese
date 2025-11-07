@@ -12,7 +12,6 @@ import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.mechanisms.swerve.LegacySwerveModule.DriveRequestType;
 import com.ctre.phoenix6.signals.StaticFeedforwardSignValue;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
@@ -20,14 +19,22 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.ctre.phoenix6.swerve.SwerveRequest.ForwardPerspectiveValue;
+import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.pathplanner.lib.config.ModuleConfig;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
 
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.units.measure.MomentOfInertia;
 import edu.wpi.first.units.measure.Voltage;
 
@@ -38,7 +45,9 @@ import java.util.function.Supplier;
 
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.*;
 
+import frc.robot.Constants.DrivetrainConstants.TunerConstants;
 import frc.robot.subsystems.Swerve;
+
 
 public final class Constants {
     public static class RobotMap {}
@@ -338,12 +347,16 @@ public final class Constants {
             private static final SwerveRequest.FieldCentric DRIVE = new SwerveRequest.FieldCentric();
             private static final SwerveRequest.RobotCentric ROBO_CENTRIC = new SwerveRequest.RobotCentric();
             private static final SwerveRequest.SwerveDriveBrake BRAKE = new SwerveRequest.SwerveDriveBrake();
+            public static final SwerveRequest.ApplyRobotSpeeds AUTON = new SwerveRequest.ApplyRobotSpeeds();
 
             public static Supplier<SwerveRequest> getDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
                 return () -> DRIVE
                         .withVelocityX(x.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
                         .withVelocityY(y.getAsDouble() * MAX_SPEED) // Drive left with negative X
                         .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE)
+                        .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
+                        .withDeadband(ControllerConstants.DEADBAND)
+                        .withRotationalDeadband(ControllerConstants.DEADBAND)
                         .withForwardPerspective(ForwardPerspectiveValue.OperatorPerspective); // Drive counterclockwise with negative
                                                                                  // X (left)
                                                                         
@@ -356,13 +369,35 @@ public final class Constants {
                                                                                         // (forward)
                         .withVelocityY(x.getAsDouble() * MAX_SPEED) // Drive left with negative X
                                                                                         // (left)
-                        .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE); // Drive counterclockwise with negative
+                        .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE) // Drive counterclockwise with negative
                                                                                  // X (left)
+                        .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
+                        .withDeadband(ControllerConstants.DEADBAND)
+                        .withRotationalDeadband(ControllerConstants.DEADBAND);
             }
 
             public static Supplier<SwerveRequest> getBrake() {
                 return () -> BRAKE;
             }
         }
+    }
+
+    public static class AutonomousConstants {
+        public static final PIDConstants TRANSLATION_PID = new PIDConstants(50, 0, 0);
+        public static final PIDConstants ROTATION_PID = new PIDConstants(5, 0, 0);
+
+        private static final double TRACK_WIDTH = Units.inchesToMeters(22);
+        private static final Mass ROBOT_MASS = Pounds.of(147);
+        private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(5.2268411);
+        private static final ModuleConfig MODULE_CONFIG = new ModuleConfig(
+                TunerConstants.kWheelRadius, TunerConstants.kSpeedAt12Volts,
+                1.916, DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
+                Amps.of(120), 1);
+
+        public static final RobotConfig CONFIG = new RobotConfig(ROBOT_MASS, ROBOT_MOI, MODULE_CONFIG,
+                new Translation2d[] { new Translation2d(TRACK_WIDTH / 2, TRACK_WIDTH / 2),
+                        new Translation2d(TRACK_WIDTH / 2, -TRACK_WIDTH / 2),
+                        new Translation2d(-TRACK_WIDTH / 2, TRACK_WIDTH / 2),
+                        new Translation2d(-TRACK_WIDTH / 2, -TRACK_WIDTH / 2) });
     }
 }

@@ -7,12 +7,16 @@ import java.util.function.Supplier;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
+import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -23,6 +27,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants.AutonomousConstants;
 import frc.robot.Constants.DrivetrainConstants.DriveRequests;
 import frc.robot.Constants.DrivetrainConstants.TunerConstants.TunerSwerveDrivetrain;;
 
@@ -130,6 +135,8 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         if (Utils.isSimulation()) {
             startSimThread();
         }
+
+        configurePathPlanner();
     }
 
     /**
@@ -154,6 +161,8 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         if (Utils.isSimulation()) {
             startSimThread();
         }
+
+        configurePathPlanner();
     }
 
     /**
@@ -186,6 +195,8 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         if (Utils.isSimulation()) {
             startSimThread();
         }
+
+        configurePathPlanner();
     }
 
     /**
@@ -307,5 +318,36 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
                 turnMult = 1.0;
             }
         });
+    }
+
+    /**
+     * @return current robot pose
+     */
+    private Pose2d getPose(){
+        return getState().Pose;
+    }
+
+    /**
+     * @return current robot chassis speeds
+     */
+    private ChassisSpeeds getCurrentRobotChassisSpeeds() {
+        return getState().Speeds;
+    }
+
+    private void configurePathPlanner() {
+        AutoBuilder.configure(
+                this::getPose, // Supplier of current robot pose
+                this::resetPose, // Consumer for seeding pose against auto
+                this::getCurrentRobotChassisSpeeds,
+                (speeds, feedforwards) -> this
+                        .setControl(DriveRequests.AUTON.withSpeeds(speeds).withDriveRequestType(DriveRequestType.Velocity)
+                                .withWheelForceFeedforwardsX(feedforwards.robotRelativeForcesX())
+                                .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesY())), // Consumer of
+                                                                                                    // ChassisSpeeds to
+                                                                                                    // drive the robot
+                new PPHolonomicDriveController(AutonomousConstants.TRANSLATION_PID, AutonomousConstants.ROTATION_PID),
+                AutonomousConstants.CONFIG,
+                () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
+                this); // Subsystem for requirements
     }
 }
