@@ -14,13 +14,14 @@ import edu.wpi.first.wpilibj2.command.Command;
 public abstract class LightningContainer {
 
     public LightningContainer() {
-        initializeSubsystems();
+        initializeHardware();
 
         initializeNamedCommands();
 
         // Setup driver commands and defaults
         configureButtonBindings();
         configureDefaultCommands();
+        configureLEDs();
         // initializeDashboardCommands();
 
         // Setup fault monitoring
@@ -35,7 +36,7 @@ public abstract class LightningContainer {
     /**
      * Instantialize subsystems/static methods
      */
-    protected abstract void initializeSubsystems();
+    protected abstract void initializeHardware();
 
     /**
      * Instantialize named commands
@@ -57,6 +58,8 @@ public abstract class LightningContainer {
      * requires that subsystem
      */
     protected abstract void configureDefaultCommands();
+
+    protected abstract void configureLEDs();
 
     /**
      * Cancles all default commands

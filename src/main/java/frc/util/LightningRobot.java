@@ -7,11 +7,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.util.testing.SystemTest;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -41,7 +39,6 @@ public class LightningRobot extends TimedRobot {
 
     private int medPriorityFreq = (int) Math.round(0.1 / getPeriod());
 
-    private double loopTime;
 
     private int lowPriorityFreq = (int) Math.round(1 / getPeriod());
 
@@ -162,8 +159,6 @@ public class LightningRobot extends TimedRobot {
             if (counter % backgroundPriorityFreq == 0) {
                 robotBackgroundPeriodic();
             }
-
-            loopTime = Timer.getFPGATimestamp() - time;
         }
 
         CommandScheduler.getInstance().run();
@@ -203,13 +198,6 @@ public class LightningRobot extends TimedRobot {
      * thread.
      */
     protected void robotMediumPriorityPeriodic() {
-    }
-
-    /**
-     * Getter for robot loop time.
-     */
-    private double getLoopTime() {
-        return loopTime;
     }
 
     /**
