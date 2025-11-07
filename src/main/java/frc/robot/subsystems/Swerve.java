@@ -20,9 +20,10 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-
+import frc.robot.Constants.DrivetrainConstants.DriveRequests;
 import frc.robot.Constants.DrivetrainConstants.TunerConstants.TunerSwerveDrivetrain;;
 
 /**
@@ -45,6 +46,9 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
+
+    private static double driveMult = 1d;
+    private static double turnMult = 1d;
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -284,5 +288,24 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         Matrix<N3, N1> visionMeasurementStdDevs
     ) {
         super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds), visionMeasurementStdDevs);
+    }
+
+    /**
+     * @return speed multipliers for drive and turn
+     */
+    public static double[] getSpeedMults() {
+        return new double[] {driveMult, turnMult};
+    }
+
+    public static Command applySlowMode(boolean slowMode){
+        return new InstantCommand (() -> {
+            if(slowMode){
+                driveMult = DriveRequests.SLOW_SPEED_MULT;
+                turnMult = DriveRequests.SLOW_SPEED_MULT;
+            } else {
+                driveMult = 1.0;
+                turnMult = 1.0;
+            }
+        });
     }
 }

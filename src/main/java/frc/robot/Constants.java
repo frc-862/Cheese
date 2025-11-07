@@ -46,6 +46,8 @@ public final class Constants {
     public static class ControllerConstants {
         public static final int DRIVER_PORT = 0;
         public static final int COPILOT_PORT = 1;
+
+        public static final double DEADBAND = 0.1;
     }
 
     public static class LEDConstants {}
@@ -329,7 +331,6 @@ public final class Constants {
                                                                                                             // second max
                                                                                                             // angular
                                                                                                             // velocity
-            public static final double SLOW_MODE_MULT = 0.3; // 3/4 of a rotation per second max angular velocity
 
             public static final double SLOW_SPEED_MULT = 0.4; // temp
             public static final double SLOW_TURN_MULT = 0.7; // temp
