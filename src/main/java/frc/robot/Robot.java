@@ -8,7 +8,6 @@ import frc.util.LightningRobot;
 
 public class Robot extends LightningRobot {
 
-    private RobotContainer container; // in case we need it later
 
     public Robot() {
         super(new RobotContainer());

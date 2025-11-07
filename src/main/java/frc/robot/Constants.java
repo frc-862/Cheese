@@ -47,6 +47,7 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants.*;
 
 import frc.robot.Constants.DrivetrainConstants.TunerConstants;
 import frc.robot.subsystems.Swerve;
+import frc.util.leds.LEDStrip;
 
 
 public final class Constants {
@@ -58,8 +59,6 @@ public final class Constants {
 
         public static final double DEADBAND = 0.1;
     }
-
-    public static class LEDConstants {}
 
     public static class DrivetrainConstants {
         public class TunerConstants {
@@ -390,14 +389,47 @@ public final class Constants {
         private static final Mass ROBOT_MASS = Pounds.of(147); // TODO: update from CAD
         private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(5.2268411); // TODO: update from CAD
         private static final ModuleConfig MODULE_CONFIG = new ModuleConfig(
-            TunerConstants.kWheelRadius, TunerConstants.kSpeedAt12Volts,
-            1.916, DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
-            Amps.of(120), 1);
+                TunerConstants.kWheelRadius, TunerConstants.kSpeedAt12Volts,
+                1.916, DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
+                Amps.of(120), 1);
 
         public static final RobotConfig CONFIG = new RobotConfig(ROBOT_MASS, ROBOT_MOI, MODULE_CONFIG,
-            new Translation2d[] { new Translation2d(TRACK_WIDTH / 2, TRACK_WIDTH / 2),
-                new Translation2d(TRACK_WIDTH / 2, -TRACK_WIDTH / 2),
-                new Translation2d(-TRACK_WIDTH / 2, TRACK_WIDTH / 2),
-                new Translation2d(-TRACK_WIDTH / 2, -TRACK_WIDTH / 2) });
+                new Translation2d[] { new Translation2d(TRACK_WIDTH / 2, TRACK_WIDTH / 2),
+                        new Translation2d(TRACK_WIDTH / 2, -TRACK_WIDTH / 2),
+                        new Translation2d(-TRACK_WIDTH / 2, TRACK_WIDTH / 2),
+                        new Translation2d(-TRACK_WIDTH / 2, -TRACK_WIDTH / 2) });
+    }
+    
+    public static class LEDConstants {
+        public static final int LED_PWM_PORT = 0;
+        public static final int LED_LENGTH = 200;
+        
+        public static final int RED_HUE = 0;
+        public static final int ORANGE_HUE = 5;
+        public static final int YELLOW_HUE = 15;
+        public static final int GREEN_HUE = 60;
+        public static final int BLUE_HUE = 120;
+        public static final int PURPLE_HUE = 140;
+        public static final int PINK_HUE = 165;
+
+        public static final LEDStrip strip1 = new LEDStrip(12, 0);
+        public static final LEDStrip strip2 = new LEDStrip(17, 12);
+        public static final LEDStrip strip3 = new LEDStrip(12, 29);
+        public static final LEDStrip strip4 = new LEDStrip(17, 41);
+        public static final LEDStrip allLEDs = new LEDStrip(200, 0);
+
+        public enum LED_STATES {
+            TEST,
+            AUTO,
+            A,
+            B,
+            X,
+            Y;
+
+            public int ID() {
+                return this.ordinal();
+            }
+        }
+
     }
 }
