@@ -27,7 +27,6 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import static edu.wpi.first.wpilibj2.command.Commands.waitSeconds;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -57,8 +56,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
 
-    private static double driveMult = 1d;
-    private static double turnMult = 1d;
+    private double[] speedMults = DriveRequests.NORMAL_SPEED_MULTS; // 0: drive mult, 1: turn mult
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -308,21 +306,21 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     /**
      * @return speed multipliers for drive and turn
+     * 0: drive multiplier
+     * 1: turn multiplier
      */
-    public static double[] getSpeedMults() {
-        return new double[] {driveMult, turnMult};
+    public double[] getSpeedMults() {
+        return speedMults;
     }
 
-    public static Command applySlowMode(boolean slowMode){
-        return new InstantCommand (() -> {
-            if(slowMode){
-                driveMult = DriveRequests.SLOW_SPEED_MULT;
-                turnMult = DriveRequests.SLOW_SPEED_MULT;
-            } else {
-                driveMult = 1.0;
-                turnMult = 1.0;
-            }
-        });
+    /**
+     * true = enable slow mode   
+     * false = disable slow mode
+     * @param slowMode
+     * @return command to apply slow mode or normal mode
+     */
+    public Command applySlowMode(boolean slowMode){
+        return new InstantCommand(() -> speedMults = slowMode ? DriveRequests.SLOW_MULTS : DriveRequests.NORMAL_SPEED_MULTS);
     }
 
     /**
@@ -368,25 +366,25 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
      * Runs the full SysId routine for translation, steering, and rotation.
      * @return command to run sysid routine
      */
-    public Command sysId(double timeoutSeconds, double waitSeconds) {
+    public Command sysId(double timeout, double waitTime) {
         
         Command sysIdCommand = new SequentialCommandGroup(
 
             new InstantCommand(() -> DataLogManager.log("\033[0;35m\033[1mSYSID Start Translation\033[0m")),
-            m_sysIdRoutineTranslation.dynamic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineTranslation.dynamic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineTranslation.quasistatic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineTranslation.quasistatic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineTranslation.dynamic(Direction.kForward).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineTranslation.dynamic(Direction.kReverse).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineTranslation.quasistatic(Direction.kForward).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineTranslation.quasistatic(Direction.kReverse).withTimeout(timeout).andThen(waitSeconds(waitTime)),
             new InstantCommand(() -> DataLogManager.log("\033[0;35m\033[1mSYSID Start Steer\033[0m")),
-            m_sysIdRoutineSteer.dynamic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineSteer.dynamic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineSteer.quasistatic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineSteer.quasistatic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
+            m_sysIdRoutineSteer.dynamic(Direction.kForward).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineSteer.dynamic(Direction.kReverse).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineSteer.quasistatic(Direction.kForward).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineSteer.quasistatic(Direction.kReverse).withTimeout(timeout).andThen(waitSeconds(waitTime)),
             new InstantCommand(() -> DataLogManager.log("\033[0;35m\033[1mSYSID Start Rotation\033[0m")),
-            m_sysIdRoutineRotation.dynamic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineRotation.dynamic(Direction.kReverse).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineRotation.quasistatic(Direction.kForward).withTimeout(timeoutSeconds).andThen(waitSeconds(waitSeconds)),
-            m_sysIdRoutineRotation.quasistatic(Direction.kReverse).withTimeout(timeoutSeconds),
+            m_sysIdRoutineRotation.dynamic(Direction.kForward).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineRotation.dynamic(Direction.kReverse).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineRotation.quasistatic(Direction.kForward).withTimeout(timeout).andThen(waitSeconds(waitTime)),
+            m_sysIdRoutineRotation.quasistatic(Direction.kReverse).withTimeout(timeout),
             new InstantCommand(() -> DataLogManager.log("\033[0;35mSYSID End\033[0m"))
         );
         sysIdCommand.addRequirements(this);

@@ -50,9 +50,9 @@ public class RobotContainer extends LightningContainer {
     protected void configureDefaultCommands() {
 
         drivetrain.setDefaultCommand(drivetrain.applyRequest(DriveRequests.getDrive(
-                () -> -driver.getLeftY() * Swerve.getSpeedMults()[0],
-                () -> -driver.getLeftX() * Swerve.getSpeedMults()[0],
-                () -> -driver.getRightX() * Swerve.getSpeedMults()[1])));
+                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
     }
 
     @Override
@@ -75,15 +75,15 @@ public class RobotContainer extends LightningContainer {
     protected void configureButtonBindings() {
 
         // Slow Mode
-        new Trigger(() -> driver.getRightTriggerAxis() > 0.25).onTrue(Swerve.applySlowMode(true))
-            .onFalse(Swerve.applySlowMode(false));
+        new Trigger(() -> driver.getRightTriggerAxis() > 0.25).onTrue(drivetrain.applySlowMode(true))
+            .onFalse(drivetrain.applySlowMode(false));
 
         // Robot Centric
         new Trigger(() -> driver.getLeftTriggerAxis() > 0.25)
             .whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-                () -> -driver.getLeftY() * Swerve.getSpeedMults()[0],
-                () -> -driver.getLeftX() * Swerve.getSpeedMults()[0],
-                () -> -driver.getRightX() * Swerve.getSpeedMults()[1])));
+                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
 
         // brake
         new Trigger(driver::getXButton).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
