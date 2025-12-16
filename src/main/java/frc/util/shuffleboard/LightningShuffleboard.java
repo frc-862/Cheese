@@ -349,6 +349,8 @@ public class LightningShuffleboard {
      * @implNote must be called periodically to update
      */
     public static void setPose2d(String tabName, String key, Pose2d value) {
+        // ShuffleboardTab tab = Shuffleboard.getTab(tabName);
+
         String index = tabName + "/" + key;
 
         /* logic breakdown:

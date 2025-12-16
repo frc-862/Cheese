@@ -31,9 +31,9 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.Constants.AutonomousConstants;
-import frc.robot.Constants.DrivetrainConstants.DriveRequests;
-import frc.robot.Constants.DrivetrainConstants.TunerConstants.TunerSwerveDrivetrain;;
+import frc.robot.constants.AutonomousConstants;
+import frc.robot.constants.DrivetrainConstants.DriveRequests;
+import frc.robot.constants.DrivetrainConstants.TunerConstants.TunerSwerveDrivetrain;;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements

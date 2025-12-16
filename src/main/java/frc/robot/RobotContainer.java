@@ -4,11 +4,11 @@
 
 package frc.robot;
 
-import frc.robot.Constants.DrivetrainConstants.DriveRequests;
-import frc.robot.Constants.DrivetrainConstants.TunerConstants;
-import frc.robot.Constants.LEDConstants;
-import frc.robot.Constants.LEDConstants.LED_STATES;
-import frc.robot.Constants.ControllerConstants;
+import frc.robot.constants.DrivetrainConstants.DriveRequests;
+import frc.robot.constants.DrivetrainConstants.TunerConstants;
+import frc.robot.constants.LEDConstants;
+import frc.robot.constants.LEDConstants.LED_STATES;
+import frc.robot.constants.ControllerConstants;
 import frc.robot.subsystems.Swerve;
 import frc.util.leds.Color;
 import frc.util.leds.LEDBehaviorFactory;
@@ -40,7 +40,7 @@ public class RobotContainer extends LightningContainer {
 
         leds = new LEDSubsystem(LED_STATES.values().length, LEDConstants.LED_LENGTH, LEDConstants.LED_PWM_PORT);
 
-        driver = new XboxController(ControllerConstants.DRIVER_PORT);
+        driver = new XboxController(ControllerConstants.DRIVER);
 
         logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
         drivetrain.registerTelemetry(logger::telemeterize);
@@ -50,8 +50,8 @@ public class RobotContainer extends LightningContainer {
     protected void configureDefaultCommands() {
 
         drivetrain.setDefaultCommand(drivetrain.applyRequest(DriveRequests.getDrive(
-                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
     }
 
@@ -81,8 +81,8 @@ public class RobotContainer extends LightningContainer {
         // Robot Centric
         new Trigger(() -> driver.getLeftTriggerAxis() > 0.25)
             .whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
 
         // brake

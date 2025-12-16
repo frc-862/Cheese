@@ -39,7 +39,6 @@ public class LightningRobot extends TimedRobot {
 
     private int medPriorityFreq = (int) Math.round(0.1 / getPeriod());
 
-
     private int lowPriorityFreq = (int) Math.round(1 / getPeriod());
 
     private int backgroundPriorityFreq = (int) Math.round(10 / getPeriod());
@@ -159,6 +158,7 @@ public class LightningRobot extends TimedRobot {
             if (counter % backgroundPriorityFreq == 0) {
                 robotBackgroundPeriodic();
             }
+
         }
 
         CommandScheduler.getInstance().run();
