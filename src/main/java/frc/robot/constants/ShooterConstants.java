@@ -17,4 +17,4 @@ public class ShooterConstants {
     public static final double kV = 0.096;
     public static final double kS = 0.5;
     public static final AngularVelocity TOLERANCE = RotationsPerSecond.of(2);
-    }
+}

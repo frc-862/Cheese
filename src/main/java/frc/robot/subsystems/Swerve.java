@@ -349,7 +349,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
                                                                                                     // ChassisSpeeds to
                                                                                                     // drive the robot
             new PPHolonomicDriveController(AutonomousConstants.TRANSLATION_PID, AutonomousConstants.ROTATION_PID),
-            AutonomousConstants.CONFIG,
+            AutonomousConstants.getConfig(getModuleLocations()),
             () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
             this); // Subsystem for requirements
     }
