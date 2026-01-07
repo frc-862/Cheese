@@ -50,8 +50,8 @@ public class RobotContainer extends LightningContainer {
     protected void configureDefaultCommands() {
 
         drivetrain.setDefaultCommand(drivetrain.applyRequest(DriveRequests.getDrive(
-                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
     }
 
@@ -81,8 +81,8 @@ public class RobotContainer extends LightningContainer {
         // Robot Centric
         new Trigger(() -> driver.getLeftTriggerAxis() > 0.25)
             .whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
+                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
                 () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
 
         // brake
