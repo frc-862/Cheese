@@ -9,10 +9,15 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.ctre.phoenix6.swerve.SwerveRequest.ForwardPerspectiveValue;
 
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.numbers.N2;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -97,5 +102,25 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     public Pose2d getPose(){
         return getState().Pose;
+    }
+
+    public ChassisSpeeds getChassisVelocity() {
+        // Create an empty array of states
+        SwerveModuleState[] states = new SwerveModuleState[4];
+
+        // add the module states for each index
+        for (int i = 0; i < states.length; i++) {
+            states[i] = getModule(i).getCurrentState();
+        }
+
+        // return the speeds
+        return getKinematics().toChassisSpeeds(states);
+    }
+
+    public Vector<N2> getLinearVelocityVector() {
+        ChassisSpeeds speeds = getChassisVelocity();
+
+        // Return the vector represneting the robots current linear velodcity
+        return VecBuilder.fill(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
     }
 }

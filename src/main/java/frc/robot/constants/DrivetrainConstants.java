@@ -256,18 +256,6 @@ public class DrivetrainConstants {
 
     public static class DriveRequests {
 
-        public static final SwerveRequest.FieldCentric AUTO_REQUEST = new SwerveRequest.FieldCentric();
-        public static final SwerveRequest ROBOT_CENTRIC = new SwerveRequest.RobotCentric();
-
-        public static SwerveRequest getAutoRequest(double x, double y, double r) {
-            return AUTO_REQUEST
-                .withVelocityX(x)
-                .withVelocityY(y)
-                .withRotationalRate(r)
-                .withForwardPerspective(ForwardPerspectiveValue.BlueAlliance)
-                .withDriveRequestType(DriveRequestType.Velocity);
-        }
-
         public static final double MAX_SPEED = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts
                                                                                                 // desired
                                                                                                 // top
@@ -290,6 +278,24 @@ public class DrivetrainConstants {
                 .withForwardPerspective(ForwardPerspectiveValue.OperatorPerspective); // Drive counterclockwise with negative
                                                                             // X (left)
                                                                     
+        }
+
+        public static SwerveRequest getAutoDriveInstance(double x, double y, double r) {
+            return DRIVE
+                .withVelocityX(x*MAX_SPEED)
+                .withVelocityY(y*MAX_SPEED)
+                .withRotationalRate(r*MAX_ANGULAR_RATE)
+                .withForwardPerspective(ForwardPerspectiveValue.BlueAlliance)
+                .withDriveRequestType(DriveRequestType.Velocity);
+        }
+
+        public static Supplier<SwerveRequest> getAutoDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier r) {
+            return () -> DRIVE
+                .withVelocityX(x.getAsDouble() * MAX_SPEED)
+                .withVelocityY(y.getAsDouble() * MAX_SPEED)
+                .withRotationalRate(r.getAsDouble() * MAX_SPEED)
+                .withForwardPerspective(ForwardPerspectiveValue.BlueAlliance)
+                .withDriveRequestType(DriveRequestType.Velocity);
         }
 
         public static Supplier<SwerveRequest> getRobotCentric(DoubleSupplier x, DoubleSupplier y,

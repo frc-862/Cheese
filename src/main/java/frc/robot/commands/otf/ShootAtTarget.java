@@ -4,24 +4,26 @@
 
 package frc.robot.commands.otf;
 
-import java.util.function.Supplier;
+import java.util.function.DoubleSupplier;
+
 
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.numbers.N2;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.Measure;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 
-import edu.wpi.first.units.VelocityUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.Velocity;
 import edu.wpi.first.wpilibj2.command.Command;
 
 import frc.robot.constants.DrivetrainConstants.DriveRequests;
@@ -48,6 +50,10 @@ public class ShootAtTarget extends Command {
 
     // The target to shoot at
     Translation2d target;
+
+    // Movement suppliers if added
+    DoubleSupplier xMovement;
+    DoubleSupplier yMovement;
     
     /** Creates a new ShootAnywhere. */
     public ShootAtTarget(Swerve swerve, Shooter shooter, Translation2d target) {
@@ -56,12 +62,16 @@ public class ShootAtTarget extends Command {
 
         this.target = target;
         // TODO: Add constants later
-        anglePID = new PIDController(0, 0, 0);
+        anglePID = new PIDController(0.1, 0, 0);
 
         // The constnats
         angleTolerance = Degrees.of(5);
         flyWheelRadius = Meters.of(0.2); // in meters (est.)
         verticalShootingAngle = Degrees.of(15);
+
+        // Keep movement at 0 for now
+        xMovement = null;
+        yMovement = null;
         
         // Use addRequirements() here to declare subsystem dependencies.
         addRequirements(swerve, shooter);
@@ -70,24 +80,39 @@ public class ShootAtTarget extends Command {
     // Called when the command is initially scheduled.
     @Override
     public void initialize() {
-        // Get our robots target angle
-        Translation2d deltaTranslation = swerve.getTranslation2d().minus(target);
-        robotTargetAngle = Degrees.of(deltaTranslation.getAngle().plus(new Rotation2d(Units.degreesToRadians(90))).getDegrees());
+        Vector<N2> stationaryShootVelocityVector = getStationaryShootingVector();
 
-        // Get our target shooter target velocity
-        double distance = deltaTranslation.getNorm(); 
-        double velocity = Math.sqrt((distance*9.81)/Math.sin(Math.toRadians(2*verticalShootingAngle.baseUnitMagnitude())));
-
-        shooterTargetVelocity = RadiansPerSecond.of(velocity/flyWheelRadius.in(Meters));
+        // Just set them for stationary shooting
+        // TODO: DOUBLE CHECK
+        shooterTargetVelocity = RadiansPerSecond.of(stationaryShootVelocityVector.norm()/flyWheelRadius.in(Meters));
+        robotTargetAngle = Degrees.of(new Translation2d(stationaryShootVelocityVector).getAngle().getDegrees());
     }
 
     // Called every time the scheduler runs while the command is scheduled.
     @Override
     public void execute() {
+        // Calculate turret position for on the fly?
+        if (xMovement != null && yMovement != null) {
+            // Create the known vectors
+            Vector<N2> stationaryShootVelocityVector = getStationaryShootingVector();
+            Vector<N2> robotVelocityVector = swerve.getLinearVelocityVector();
+
+            // Solve for the target vector
+            Vector<N2> shooterTargetVector = stationaryShootVelocityVector.minus(robotVelocityVector);
+            
+            // Set the values based on the target vector
+            shooterTargetVelocity = RadiansPerSecond.of(shooterTargetVector.norm()/flyWheelRadius.in(Meters));
+            robotTargetAngle = Degrees.of(new Translation2d(shooterTargetVector).getAngle().getDegrees());
+        }
+
         double swerveAngleDegrees = swerve.getPose().getRotation().getDegrees();
+        double clippedAngularRate = Math.max(-1, Math.min(1, anglePID.calculate(swerveAngleDegrees, robotTargetAngle.in(Degrees))));
 
         if (Math.abs(swerveAngleDegrees - robotTargetAngle.in(Degrees)) > angleTolerance.in(Degrees)) {
-            swerve.setControl(DriveRequests.getAutoRequest(0, 0, -anglePID.calculate(swerveAngleDegrees, robotTargetAngle.in(Degrees))));
+            swerve.setControl(DriveRequests.getAutoDriveInstance(
+                yMovement == null ? 0 : -yMovement.getAsDouble(), 
+                xMovement == null ? 0 : -xMovement.getAsDouble(),
+                -clippedAngularRate));
         } else {
             shooter.setVelocity(shooterTargetVelocity);
         }
@@ -104,5 +129,30 @@ public class ShootAtTarget extends Command {
     @Override
     public boolean isFinished() {
         return false;
+    }
+
+    private Vector<N2> getStationaryShootingVector() {
+        // Get our robots target angle
+        Translation2d deltaTranslation = target.minus(swerve.getTranslation2d());
+        Angle stationaryTargetAngle = Degrees.of(new Rotation2d(Units.degreesToRadians(90)).minus(deltaTranslation.getAngle()).getDegrees());
+
+        // Get our target shooter target velocity
+        double velocity = Math.sqrt((deltaTranslation.getNorm()*9.81)/Math.sin(Math.toRadians(2*verticalShootingAngle.in(Radians))));
+
+        // Create the known vectors
+        return VecBuilder.fill(Math.cos(stationaryTargetAngle.in(Radians)) * velocity, Math.sin(stationaryTargetAngle.in(Radians)) * velocity);
+    }
+
+    /**
+     * Add movement while continuing to aim and shoot at a target
+     * @param x Movement in the x direction
+     * @param y Movementn in teh y direction
+     * @return this
+     */
+    public ShootAtTarget withMovement(DoubleSupplier x, DoubleSupplier y) {
+        xMovement = x;
+        yMovement = y;
+
+        return this;
     }
 }
