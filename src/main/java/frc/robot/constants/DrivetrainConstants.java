@@ -256,14 +256,25 @@ public class DrivetrainConstants {
 
     public static class DriveRequests {
 
+        public static final SwerveRequest.FieldCentric AUTO_REQUEST = new SwerveRequest.FieldCentric();
+        public static final SwerveRequest ROBOT_CENTRIC = new SwerveRequest.RobotCentric();
+
+        public static SwerveRequest getAutoRequest(double x, double y, double r) {
+            return AUTO_REQUEST
+                .withVelocityX(x)
+                .withVelocityY(y)
+                .withRotationalRate(r)
+                .withForwardPerspective(ForwardPerspectiveValue.BlueAlliance)
+                .withDriveRequestType(DriveRequestType.Velocity);
+        }
+
         public static final double MAX_SPEED = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts
                                                                                                 // desired
                                                                                                 // top
                                                                                                 // speed
         public static final double MAX_ANGULAR_RATE = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a
                                                                                                         // rotation per
-                                                                                                        // second max
-                                                                                                        // angular
+                                                                                                        // second m                                                                                                      // angular
                                                                                                         // velocity
 
         private static final SwerveRequest.FieldCentric DRIVE = new SwerveRequest.FieldCentric();
