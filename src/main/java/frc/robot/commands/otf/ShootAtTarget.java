@@ -12,6 +12,13 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+
+import edu.wpi.first.units.VelocityUnit;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Velocity;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.constants.DrivetrainConstants;
 import frc.robot.constants.DrivetrainConstants.DriveRequests;
@@ -27,7 +34,14 @@ public class ShootAtTarget extends Command {
     // Target angle stuff
     double robotTargetAngle;
     PIDController anglePID;
+
+    // Some constnats to add later
     double angleToleranceDegrees;
+    double flyWheelRadius;
+    Angle verticalShootingAngle;
+
+    // Target shooter velocity
+    AngularVelocity shooterTargetVelocity;
 
     // The target to shoot at
     Translation2d target;
@@ -40,8 +54,12 @@ public class ShootAtTarget extends Command {
         this.target = target;
         // TODO: Add constants later
         anglePID = new PIDController(0, 0, 0);
-        angleToleranceDegrees = 5;
 
+        // The constnats
+        angleToleranceDegrees = 5;
+        flyWheelRadius = 0.2; // in meters (est.)
+        verticalShootingAngle = Degrees.of(15);
+        
         // Use addRequirements() here to declare subsystem dependencies.
         addRequirements(swerve);
     }
@@ -52,6 +70,12 @@ public class ShootAtTarget extends Command {
         // Get our robots target angle
         Translation2d deltaTranslation = swerve.getTranslation2d().minus(target);
         robotTargetAngle = deltaTranslation.getAngle().plus(new Rotation2d(Units.degreesToRadians(90))).getDegrees();
+
+        // Get our target shooter target velocity
+        double distance = deltaTranslation.getNorm(); 
+        double velocity = Math.sqrt((distance*9.18)/Math.sin(Math.toRadians(2*verticalShootingAngle.baseUnitMagnitude())));
+
+        shooterTargetVelocity = RadiansPerSecond.of(velocity/flyWheelRadius);
     }
 
     // Called every time the scheduler runs while the command is scheduled.
@@ -62,7 +86,7 @@ public class ShootAtTarget extends Command {
         if (Math.abs(swerveAngleDegrees - robotTargetAngle) > angleToleranceDegrees) {
             swerve.setControl(DriveRequests.getAutoRequest(0, 0, -anglePID.calculate(swerveAngleDegrees, robotTargetAngle)));
         } else {
-            shooter.setPower(0.65, 0.9);
+            shooter.setVelocity(shooterTargetVelocity);
         }
     }
 
