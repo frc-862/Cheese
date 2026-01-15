@@ -4,10 +4,14 @@
 
 package frc.robot;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import frc.util.LightningRobot;
 
 public class Robot extends LightningRobot {
 
+    private final StringPublisher instructionsPublisher = 
+        NetworkTableInstance.getDefault().getTable("Demo").getStringTopic("Instructions").publish();
 
     public Robot() {
         super(new RobotContainer());
@@ -16,25 +20,9 @@ public class Robot extends LightningRobot {
     @Override
     public void robotInit() {
         super.robotInit();
+
+        instructionsPublisher.accept("Copilot: triggers control shooter power. X/B control collector. Y/A control indexer. "
+            + "Left bumper for smart collect. Drive: left trigger for robot-centric drive. Start and Back to reset field forward.");
     }
 
-    @Override
-    public void autonomousInit() {
-        super.autonomousInit();
-    }
-
-    @Override
-    public void teleopInit() {
-        super.teleopInit();
-    }
-
-    @Override
-    public void disabledInit() {
-        super.disabledInit();
-    }
-
-    @Override
-    public void disabledPeriodic() {
-        super.disabledPeriodic();
-    }
 }

@@ -33,9 +33,6 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.ctre.phoenix6.swerve.SwerveRequest.ForwardPerspectiveValue;
 
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
@@ -45,6 +42,7 @@ import edu.wpi.first.units.measure.Voltage;
 import frc.robot.subsystems.Swerve;
 
 public class DrivetrainConstants {
+    
     public class TunerConstants {
         // Both sets of gains need to be tuned to your individual robot.
 
@@ -93,7 +91,8 @@ public class DrivetrainConstants {
             );
         private static final CANcoderConfiguration encoderInitialConfigs = new CANcoderConfiguration();
         // Configs for the Pigeon 2; leave this null to skip applying Pigeon 2 configs
-        private static final Pigeon2Configuration pigeonConfigs = null;
+        private static final Pigeon2Configuration pigeonConfigs = null; /* new Pigeon2Configuration().withMountPose(
+            new MountPoseConfigs().withMountPoseRoll(Degrees.of(0)));*/
 
         // CAN bus that the devices are located on;
         // All swerve devices must share the same CAN bus
@@ -107,9 +106,9 @@ public class DrivetrainConstants {
         // This may need to be tuned to your individual robot
         private static final double kCoupleRatio = 3.5714285714285716;
 
-        public static final double kDriveGearRatio = 6.746031746031747;
+        private static final double kDriveGearRatio = 6.746031746031747;
         private static final double kSteerGearRatio = 21.428571428571427;
-        public static final Distance kWheelRadius = Inches.of(2);
+        private static final Distance kWheelRadius = Inches.of(2);
 
         private static final boolean kInvertLeftSide = false;
         private static final boolean kInvertRightSide = true;
@@ -252,63 +251,6 @@ public class DrivetrainConstants {
                     drivetrainConstants, modules
                 );
             }
-
-            /**
-             * Constructs a CTRE SwerveDrivetrain using the specified constants.
-             * <p>
-             * This constructs the underlying hardware devices, so users should not construct
-             * the devices themselves. If they need the devices, they can access them through
-             * getters in the classes.
-             *
-             * @param drivetrainConstants     Drivetrain-wide constants for the swerve drive
-             * @param odometryUpdateFrequency The frequency to run the odometry loop. If
-             *                                unspecified or set to 0 Hz, this is 250 Hz on
-             *                                CAN FD, and 100 Hz on CAN 2.0.
-             * @param modules                 Constants for each specific module
-             */
-            public TunerSwerveDrivetrain(
-                SwerveDrivetrainConstants drivetrainConstants,
-                double odometryUpdateFrequency,
-                SwerveModuleConstants<?, ?, ?>... modules
-            ) {
-                super(
-                    TalonFX::new, TalonFX::new, CANcoder::new,
-                    drivetrainConstants, odometryUpdateFrequency, modules
-                );
-            }
-
-            /**
-             * Constructs a CTRE SwerveDrivetrain using the specified constants.
-             * <p>
-             * This constructs the underlying hardware devices, so users should not construct
-             * the devices themselves. If they need the devices, they can access them through
-             * getters in the classes.
-             *
-             * @param drivetrainConstants       Drivetrain-wide constants for the swerve drive
-             * @param odometryUpdateFrequency   The frequency to run the odometry loop. If
-             *                                  unspecified or set to 0 Hz, this is 250 Hz on
-             *                                  CAN FD, and 100 Hz on CAN 2.0.
-             * @param odometryStandardDeviation The standard deviation for odometry calculation
-             *                                  in the form [x, y, theta]ᵀ, with units in meters
-             *                                  and radians
-             * @param visionStandardDeviation   The standard deviation for vision calculation
-             *                                  in the form [x, y, theta]ᵀ, with units in meters
-             *                                  and radians
-             * @param modules                   Constants for each specific module
-             */
-            public TunerSwerveDrivetrain(
-                SwerveDrivetrainConstants drivetrainConstants,
-                double odometryUpdateFrequency,
-                Matrix<N3, N1> odometryStandardDeviation,
-                Matrix<N3, N1> visionStandardDeviation,
-                SwerveModuleConstants<?, ?, ?>... modules
-            ) {
-                super(
-                    TalonFX::new, TalonFX::new, CANcoder::new,
-                    drivetrainConstants, odometryUpdateFrequency,
-                    odometryStandardDeviation, visionStandardDeviation, modules
-                );
-            }
         }
     }
 
@@ -324,15 +266,9 @@ public class DrivetrainConstants {
                                                                                                         // angular
                                                                                                         // velocity
 
-        public static final double SLOW_SPEED_MULT = 0.4;
-        public static final double SLOW_TURN_MULT = 0.7;
-        public static final double[] NORMAL_SPEED_MULTS = {1.0, 1.0};
-        public static final double[] SLOW_MULTS = {SLOW_SPEED_MULT, SLOW_TURN_MULT};
-
         private static final SwerveRequest.FieldCentric DRIVE = new SwerveRequest.FieldCentric();
         private static final SwerveRequest.RobotCentric ROBO_CENTRIC = new SwerveRequest.RobotCentric();
         private static final SwerveRequest.SwerveDriveBrake BRAKE = new SwerveRequest.SwerveDriveBrake();
-        public static final SwerveRequest.ApplyRobotSpeeds AUTON = new SwerveRequest.ApplyRobotSpeeds();
 
         public static Supplier<SwerveRequest> getDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
             return () -> DRIVE
@@ -340,8 +276,6 @@ public class DrivetrainConstants {
                 .withVelocityY(y.getAsDouble() * MAX_SPEED) // Drive left with negative X
                 .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE)
                 .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
-                .withDeadband(ControllerConstants.DEADBAND)
-                .withRotationalDeadband(ControllerConstants.DEADBAND)
                 .withForwardPerspective(ForwardPerspectiveValue.OperatorPerspective); // Drive counterclockwise with negative
                                                                             // X (left)
                                                                     
@@ -350,19 +284,19 @@ public class DrivetrainConstants {
         public static Supplier<SwerveRequest> getRobotCentric(DoubleSupplier x, DoubleSupplier y,
                 DoubleSupplier rot) {
             return () -> ROBO_CENTRIC
-                .withVelocityX(y.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
+                .withVelocityX(x.getAsDouble() * MAX_SPEED) // Drive forward with negative Y
                                                                                 // (forward)
-                .withVelocityY(x.getAsDouble() * MAX_SPEED) // Drive left with negative X
+                .withVelocityY(y.getAsDouble() * MAX_SPEED) // Drive left with negative X
                                                                                 // (left)
                 .withRotationalRate(rot.getAsDouble() * MAX_ANGULAR_RATE) // Drive counterclockwise with negative
                                                                             // X (left)
-                .withDriveRequestType(DriveRequestType.OpenLoopVoltage)
-                .withDeadband(ControllerConstants.DEADBAND)
-                .withRotationalDeadband(ControllerConstants.DEADBAND);
+                .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
         }
 
         public static Supplier<SwerveRequest> getBrake() {
             return () -> BRAKE;
         }
     }
+
+    public static final double SLOWMODE_MULTIPLIER = 0.4;
 }

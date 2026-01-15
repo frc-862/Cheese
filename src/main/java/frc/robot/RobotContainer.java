@@ -4,105 +4,196 @@
 
 package frc.robot;
 
+import frc.robot.constants.CollectorConstants;
+import frc.robot.constants.ControllerConstants;
+import frc.robot.constants.DrivetrainConstants;
 import frc.robot.constants.DrivetrainConstants.DriveRequests;
-import frc.robot.constants.DrivetrainConstants.TunerConstants;
+import frc.robot.constants.IndexerConstants;
 import frc.robot.constants.LEDConstants;
 import frc.robot.constants.LEDConstants.LED_STATES;
-import frc.robot.constants.ControllerConstants;
+import frc.robot.commands.ExtraSmartShoot;
+import frc.robot.commands.SmartCollect;
+import frc.robot.commands.SmartShoot;
+import frc.robot.commands.SmartShoot;
+import frc.robot.constants.ShooterConstants;
+import frc.robot.subsystems.Collector;
+import frc.robot.subsystems.Indexer;
+import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Swerve;
+import frc.util.LightningContainer;
 import frc.util.leds.Color;
 import frc.util.leds.LEDBehaviorFactory;
 import frc.util.leds.LEDSubsystem;
-import frc.util.LightningContainer;
-import frc.util.shuffleboard.LightningShuffleboard;
+import frc.util.shuffleboard.DemoShuffleboard;
 
-import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.networktables.BooleanSubscriber;
+import edu.wpi.first.networktables.DoubleSubscriber;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 public class RobotContainer extends LightningContainer {
 
-    private SendableChooser<Command> autoChooser;
-    private Swerve drivetrain;
-    private XboxController driver;
-    private Telemetry logger;
-
+    private Collector collector;
+    private Indexer indexer;
+    private Shooter shooter;
+    private Swerve  drivetrain;
     private LEDSubsystem leds;
- 
+
+    private XboxController driver;
+    private XboxController copilot;
+
+    private XboxController storedCopilot;
+
+    private DoubleSubscriber shooterPowerMultiplier;
+    private DoubleSubscriber shooterRPS;
+    private DoubleSubscriber driveMultiplier;
+    private BooleanSubscriber useSingleController;
+
     @Override
     protected void initializeHardware() {
-        drivetrain = TunerConstants.createDrivetrain();
+        drivetrain = DrivetrainConstants.TunerConstants.createDrivetrain();
+        
+        collector = new Collector();
+        indexer = new Indexer();
+        shooter = new Shooter();
 
         leds = new LEDSubsystem(LED_STATES.values().length, LEDConstants.LED_LENGTH, LEDConstants.LED_PWM_PORT);
-
+        
         driver = new XboxController(ControllerConstants.DRIVER);
+        copilot = storedCopilot = new XboxController(ControllerConstants.COPILOT);
 
-        logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
-        drivetrain.registerTelemetry(logger::telemeterize);
+        shooterPowerMultiplier = DemoShuffleboard.subscribeToDouble("Shooter Power Multiplier", 0.4);
+        driveMultiplier = DemoShuffleboard.subscribeToDouble("Drive Multiplier", 0.4);
+        useSingleController = DemoShuffleboard.subscribeToBoolean("Use Single Controller", false);
+        shooterRPS = DemoShuffleboard.subscribeToDouble("Shooter RPS", 40);
     }
 
     @Override
     protected void configureDefaultCommands() {
-
+        
+        // default drive
         drivetrain.setDefaultCommand(drivetrain.applyRequest(DriveRequests.getDrive(
-                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
-                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
-                () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3)  * driveMultiplier.get(), 
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get())));
+
+        // coast shooter in
+        shooter.setDefaultCommand(shooter.applyPower(ShooterConstants.COAST_POWER));
+
+    }
+
+    @Override
+    protected void configureButtonBindings() {
+        // demo collect & index
+        new Trigger(copilot::getLeftBumperButton).onTrue(collector.applyPower(CollectorConstants.DEFAULT_POWER))
+            .onFalse(collector.applyStop())
+            .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
+
+        new Trigger(copilot::getRightBumperButton).onTrue(collector.applyPower(-CollectorConstants.DEFAULT_POWER))
+            .onFalse(collector.applyStop())
+            .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
+
+        // demo shoot
+        new Trigger(() -> Math.abs(getCopilotTriggerDifference()) > ControllerConstants.DEADBAND)
+            .whileTrue(shooter.applyPower(() -> getCopilotTriggerDifference() * shooterPowerMultiplier.get())
+            .deadlineFor(leds.enableState(LED_STATES.SHOOTING.ID())));
+
+        // manual index
+        new Trigger(copilot::getXButton).onTrue(indexer.applyPower(CollectorConstants.DEFAULT_POWER))
+            .onFalse(indexer.applyStop())
+            .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
+
+        new Trigger(copilot::getBButton).onTrue(indexer.applyPower(-CollectorConstants.DEFAULT_POWER))
+            .onFalse(indexer.applyStop())
+            .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
+        
+        // Extra Smart Shoot
+        new Trigger(copilot::getYButton)
+            .whileTrue(new ExtraSmartShoot(indexer, shooter, RotationsPerSecond.of(shooterRPS.get()))
+            .onSuccess(leds.enableStateWithTimeout(LED_STATES.SHOT.ID(), 5))
+            .deadlineFor(leds.enableState(LED_STATES.COLLECTING.ID())));
+
+        // keep flyweheel spun up
+        new Trigger(copilot::getAButton)
+            .whileTrue(new RunCommand(() -> shooter.setVelocity(RotationsPerSecond.of(shooterRPS.get()))) // will be autostopped by coast power
+            .deadlineFor(leds.enableState(LED_STATES.SHOOTING.ID()))); // use run command to avoid requiring shooter
+
+        // robot centric
+        new Trigger(() -> (driver.getLeftTriggerAxis()) > ControllerConstants.DEADBAND).whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get()))).whileTrue(leds.enableState(LED_STATES.ERROR.ID()));
+
+        // slowmode
+        new Trigger(() -> (driver.getRightTriggerAxis()) > ControllerConstants.DEADBAND).whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get() * DrivetrainConstants.SLOWMODE_MULTIPLIER,
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get() * DrivetrainConstants.SLOWMODE_MULTIPLIER, 
+            () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get())));
+
+        // brake
+        new Trigger(() -> useSingleController.get() ? false : driver.getXButton()).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
+
+        // reset field forward
+        new Trigger(() -> driver.getStartButton() && driver.getBackButton()).onTrue(drivetrain.commandResetFieldForward()).whileTrue(leds.enableState(LED_STATES.ERROR.ID()));
+
+        // switch to single controller mode when enabled
+        new Trigger(useSingleController::get)
+            .onTrue(new InstantCommand(() -> copilot = driver))
+            .onFalse(new InstantCommand(() -> copilot = storedCopilot))
+            .whileTrue(leds.enableState(LED_STATES.SINGLE_CONTROLLER.ID()));
     }
 
     @Override
     protected void configureLEDs() {
         leds.setDefaultBehavior(LEDBehaviorFactory.SwirlBehabior(LEDConstants.allLEDs, 10, 5, Color.BLUE, Color.ORANGE));
 
-		leds.setBehavior(LED_STATES.A.ID(), LEDBehaviorFactory.BlinkColorBehavior(LEDConstants.strip1, 4,  Color.YELLOW)); 
-		leds.setBehavior(LED_STATES.B.ID(), LEDBehaviorFactory.pulseColorBehavior(LEDConstants.strip2, 1, Color.PINK)); 
-		leds.setBehavior(LED_STATES.X.ID(), LEDBehaviorFactory.RainbowBehavior(LEDConstants.strip3, 1));
-		leds.setBehavior(LED_STATES.Y.ID(), LEDBehaviorFactory.SolidColorBehavior(LEDConstants.strip4, Color.GREEN));
+        leds.setBehavior(LED_STATES.ERROR.ID(), LEDBehaviorFactory.BlinkColorBehavior(LEDConstants.allLEDs, 2, Color.RED));
+
+        leds.setBehavior(LED_STATES.SINGLE_CONTROLLER.ID(), LEDBehaviorFactory.SolidColorBehavior(LEDConstants.strip2, Color.YELLOW).and(LEDBehaviorFactory.SolidColorBehavior(LEDConstants.strip4, Color.YELLOW)));
+
+        leds.setBehavior(LED_STATES.COLLECTED.ID(), LEDBehaviorFactory.BlinkColorBehavior(LEDConstants.strip1, 4, Color.GREEN));
+        leds.setBehavior(LED_STATES.SHOT.ID(), LEDBehaviorFactory.BlinkColorBehavior(LEDConstants.strip3, 4, Color.GREEN));
+
+		leds.setBehavior(LED_STATES.COLLECTING.ID(), LEDBehaviorFactory.pulseColorBehavior(LEDConstants.allLEDs, 8, Color.ORANGE));
+        leds.setBehavior(LED_STATES.SHOOTING.ID(), LEDBehaviorFactory.pulseColorBehavior(LEDConstants.allLEDs, 8, Color.PURPLE));
+
 		leds.setBehavior(LED_STATES.AUTO.ID(), LEDBehaviorFactory.RainbowBehavior(LEDConstants.allLEDs, 3));
-		leds.setBehavior(LED_STATES.TEST.ID(), LEDBehaviorFactory.TestStripBehavior(34, 
+		leds.setBehavior(LED_STATES.TEST.ID(), LEDBehaviorFactory.TestStripBehavior(0, 
 			() -> driver.getAButton(),
-			() -> driver.getBButton(), 
+			() -> driver.getBButton(),
 			() -> driver.getXButton(), 
 			() -> driver.getYButton()));
+
+        new Trigger(DriverStation::isTest).whileTrue(leds.enableState(LED_STATES.TEST.ID()));
+
+        new Trigger(() -> DriverStation.isAutonomous() && DriverStation.isEnabled()).whileTrue(leds.enableState(LED_STATES.AUTO.ID()));
     }
 
     @Override
-    protected void configureButtonBindings() {
-
-        // Slow Mode
-        new Trigger(() -> driver.getRightTriggerAxis() > 0.25).onTrue(drivetrain.applySlowMode(true))
-            .onFalse(drivetrain.applySlowMode(false));
-
-        // Robot Centric
-        new Trigger(() -> driver.getLeftTriggerAxis() > 0.25)
-            .whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-                () -> -driver.getLeftY() * drivetrain.getSpeedMults()[0],
-                () -> -driver.getLeftX() * drivetrain.getSpeedMults()[0],
-                () -> -driver.getRightX() * drivetrain.getSpeedMults()[1])));
-
-        // brake
-        new Trigger(driver::getXButton).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
-
-        // reset field forward
-        new Trigger(() -> driver.getStartButton() && driver.getBackButton()).onTrue(drivetrain.commandResetFieldForward());
-
-        // SysId command
-        // new Trigger(driver::getYButton).whileTrue(drivetrain.sysId());
-    }
-
-    @Override
-    protected void initializeNamedCommands() {
-        autoChooser = AutoBuilder.buildAutoChooser();
-        LightningShuffleboard.send("Auton", "Auto Chooser", autoChooser);
-    }
+    protected void initializeNamedCommands() {}
 
     @Override
     protected Command getAutonomousCommand() {
-        return autoChooser.getSelected();
+        // TODO: Test
+
+        // drive back, collect, shoot
+        return (drivetrain.applyRequest(DriveRequests.getDrive(()-> -0.1, () -> 0, () -> 0)).withTimeout(3)
+            .withDeadline(new SmartCollect(indexer, collector)))
+            .andThen(drivetrain.applyRequest(DriveRequests.getDrive(() -> 0, () -> 0, () -> 0))
+            .alongWith(new ExtraSmartShoot(indexer, shooter, RotationsPerSecond.of(40))));
+    }
+
+    private double getCopilotTriggerDifference() {
+        // left trigger is disabled when in single controller mode
+        return (copilot.getRightTriggerAxis() - (useSingleController.get() ? 0 : copilot.getLeftTriggerAxis()));
     }
 }
