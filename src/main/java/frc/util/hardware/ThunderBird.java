@@ -225,10 +225,4 @@ public class ThunderBird extends TalonFX {
         return this.config;
     }
 
-    @Deprecated
-    @Override
-    public TalonFXConfigurator getConfigurator() {
-        return super.getConfigurator();
-    }
-
 }
