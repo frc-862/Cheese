@@ -1,18 +1,13 @@
 package frc.robot.subsystems;
 
-import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
-import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-import com.ctre.phoenix6.swerve.SwerveRequest.ForwardPerspectiveValue;
 
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -23,8 +18,8 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
-import frc.robot.constants.DrivetrainConstants;
 import frc.robot.constants.DrivetrainConstants.TunerConstants.TunerSwerveDrivetrain;
+import frc.util.shuffleboard.LightningShuffleboard;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -69,6 +64,10 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     @Override
     public void periodic() {
+        // Pose2d fieldPose = new Field2d();
+        // fieldPose.setRobotPose(getPose());
+
+        LightningShuffleboard.setPose2d("Pose", "robot_pose", getPose());
         /*
          * Periodically try to apply the operator perspective.
          * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
@@ -104,7 +103,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         return getState().Pose;
     }
 
-    public ChassisSpeeds getChassisVelocity() {
+    public ChassisSpeeds getChassisSpeeds() {
         // Create an empty array of states
         SwerveModuleState[] states = new SwerveModuleState[4];
 
@@ -117,10 +116,10 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         return getKinematics().toChassisSpeeds(states);
     }
 
-    public Vector<N2> getLinearVelocityVector() {
-        ChassisSpeeds speeds = getChassisVelocity();
+    public Vector<N2> getFieldRelativeVelocity() {
+        ChassisSpeeds speeds = getChassisSpeeds();
 
         // Return the vector represneting the robots current linear velodcity
-        return VecBuilder.fill(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
+        return (new Translation2d(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond).rotateBy(getPose().getRotation().times(-1)).toVector());
     }
 }

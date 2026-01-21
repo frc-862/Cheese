@@ -4,20 +4,28 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.networktables.BooleanSubscriber;
+import edu.wpi.first.networktables.DoubleSubscriber;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.commands.ExtraSmartShoot;
+import frc.robot.commands.SmartCollect;
 import frc.robot.constants.CollectorConstants;
 import frc.robot.constants.ControllerConstants;
 import frc.robot.constants.DrivetrainConstants;
 import frc.robot.constants.DrivetrainConstants.DriveRequests;
-import frc.robot.constants.IndexerConstants;
 import frc.robot.constants.LEDConstants;
 import frc.robot.constants.LEDConstants.LED_STATES;
-import frc.robot.commands.ExtraSmartShoot;
-import frc.robot.commands.SmartCollect;
-import frc.robot.commands.SmartShoot;
-import frc.robot.commands.SmartShoot;
 import frc.robot.constants.ShooterConstants;
 import frc.robot.subsystems.Collector;
 import frc.robot.subsystems.Indexer;
+import frc.robot.subsystems.PhotonVision;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Swerve;
 import frc.util.LightningContainer;
@@ -26,20 +34,6 @@ import frc.util.leds.LEDBehaviorFactory;
 import frc.util.leds.LEDSubsystem;
 import frc.util.shuffleboard.DemoShuffleboard;
 
-import static edu.wpi.first.units.Units.RotationsPerSecond;
-
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.networktables.BooleanSubscriber;
-import edu.wpi.first.networktables.DoubleSubscriber;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.RunCommand;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
-import edu.wpi.first.wpilibj2.command.WaitCommand;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
-
 public class RobotContainer extends LightningContainer {
 
     private Collector collector;
@@ -47,6 +41,7 @@ public class RobotContainer extends LightningContainer {
     private Shooter shooter;
     private Swerve  drivetrain;
     private LEDSubsystem leds;
+    private PhotonVision vision;
 
     private XboxController driver;
     private XboxController copilot;
@@ -61,6 +56,10 @@ public class RobotContainer extends LightningContainer {
     @Override
     protected void initializeHardware() {
         drivetrain = DrivetrainConstants.TunerConstants.createDrivetrain();
+
+        // telemetry = new Telemetry(TunerConstants.kSpeedAt12Volts.magnitude());
+
+        vision = new PhotonVision(drivetrain);
         
         collector = new Collector();
         indexer = new Indexer();
