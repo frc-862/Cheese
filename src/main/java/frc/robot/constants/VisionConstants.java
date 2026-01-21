@@ -14,7 +14,7 @@ public class VisionConstants {
 
     // TODO: Update this to be the correect field layout for this season,
     public static final AprilTagFieldLayout DEFAULT_TAG_LAYOUT = AprilTagFieldLayout
-            .loadField(AprilTagFields.kDefaultField);
+            .loadField(AprilTagFields.k2026RebuiltWelded);
 
     public static final double POSE_AMBIGUITY_TOLERANCE = 1;
     public static final double TAG_DISTANCE_TOLERANCE = 10;
