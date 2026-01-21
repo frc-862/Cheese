@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +45,7 @@ public class PhotonVision extends SubsystemBase {
 
     // executor
     ScheduledExecutorService executor1;
-    // ExecutorService executor2;
+    ExecutorService executor2;
 
 
     /** Creates a new PhotonVision.
@@ -56,23 +57,25 @@ public class PhotonVision extends SubsystemBase {
         mac = new MacMini();
 
         executor1 = Executors.newSingleThreadScheduledExecutor();
-        // executor2 = Executors.newSingleThreadExecutor();
+        executor2 = Executors.newSingleThreadExecutor();
 
         pose = new AtomicReference<>(null);
 
         LightningShuffleboard.setPose2d("vision", "vision_pose", new Pose2d());
 
-        executor1.scheduleAtFixedRate(() -> {
-            try {
-                VisionInfo result = mac.getEstimatedPose();
-                if (result != null) {
-                    pose.set(result);
+        executor1.schedule(() -> {
+            while (true) { 
+                try {
+                    VisionInfo result = executor2.submit(() -> mac.getEstimatedPose()).get();
+                    if (result != null) {
+                        pose.set(result);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    log("Failed to get data");
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                log("Failed to get data");
-            }
-        }, 0, 20, TimeUnit.MILLISECONDS);
+                }
+        }, 0, TimeUnit.MILLISECONDS);
     }
  
     @Override
@@ -81,10 +84,12 @@ public class PhotonVision extends SubsystemBase {
             VisionInfo updatedPose = pose.getAndSet(null);
 
             double bestTagAmbiguity = updatedPose.result.getBestTarget().poseAmbiguity;
+             LightningShuffleboard.setPose2d("vision", "vision_pose", updatedPose.pose.estimatedPose.toPose2d());
             drivetrain.addVisionMeasurement(
                 updatedPose.pose.estimatedPose.toPose2d(), 
                 Utils.fpgaToCurrentTime(updatedPose.pose.timestampSeconds), 
                 VecBuilder.fill(bestTagAmbiguity, bestTagAmbiguity, bestTagAmbiguity));
+            log("Added vision measurment");
         }
     }
 
@@ -92,8 +97,7 @@ public class PhotonVision extends SubsystemBase {
 
     private class MacMini {
         // Camera info
-        private record CameraInfo(PhotonCamera camera, PhotonPoseEstimator poseEstimator) {};
-        
+        private record CameraInfo(PhotonCamera camera, PhotonPoseEstimator poseEstimator) {}; 
         // private record VisionInfo(PhotonPipelineResult result, EstimatedRobotPose pose) {};
 
         // Cameras
@@ -110,7 +114,7 @@ public class PhotonVision extends SubsystemBase {
                     // Get the path to the field from the deploy directory
                     Path fieldPath = Filesystem.getDeployDirectory()
                         .toPath()
-                        .resolve("field.json");
+                        .resolve("field0120.json");
 
                     fieldLayout = new AprilTagFieldLayout(fieldPath);
                 } catch (Exception e) {
@@ -147,7 +151,6 @@ public class PhotonVision extends SubsystemBase {
                 
                 for (int i = 0; i < VisionConstants.CAMERA_CONSTANTS.length; i++) {
                     poses[i] = getVisionPose(cameras[i]);
-                    log("Got vision pose successfully");
                 }
 
                 return getBestPose(poses);
@@ -191,7 +194,6 @@ public class PhotonVision extends SubsystemBase {
                     bestPose = info;
                 }
             }
-
             log("Got best pose");
             return bestPose;
         }
@@ -203,7 +205,7 @@ public class PhotonVision extends SubsystemBase {
 
             // If theres no results just skip this iteration
             if (results.isEmpty()) {
-                log("Result is null");
+                log(cameraInfo.camera.getName() + "'s Result is null");
                 return null;
             }
             
