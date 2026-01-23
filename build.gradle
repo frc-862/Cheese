@@ -8,6 +8,33 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+// Define a new Jar task for the files in frc/robot/mac
+task macJar(type: Jar) {
+    group = 'build'
+    description = 'Assembles a JAR containing the files in frc/robot/mac.'
+
+    // Include files from the specified directory
+    from('src/main/java/frc/robot/mac') {
+        include '**/*.java'
+    }
+
+    // Add a manifest if needed
+    manifest {
+        attributes(
+            'Main-Class': 'frc.robot.mac.MainClass' // Replace with the actual main class for this JAR
+        )
+    }
+
+    // Set the output JAR file name
+    archiveBaseName.set('macbot')
+    archiveVersion.set('1.0')
+    destinationDirectory = file("src/main/deploy")
+}
+
+// Ensure the macJar task runs when building the project
+jar.dependsOn macJar
+build.dependsOn macJar
+
 def ROBOT_MAIN_CLASS = "frc.robot.Main"
 
 // Define my targets (RoboRIO) and artifacts (deployable files)
@@ -33,7 +60,7 @@ deploy {
                 frcStaticFileDeploy(getArtifactTypeClass('FileTreeArtifact')) {
                     files = project.fileTree('src/main/deploy')
                     directory = '/home/lvuser/deploy'
-                    deleteOldFiles = false // Change to true to delete files on roboRIO that no
+                    deleteOldFiles = true // Change to true to delete files on roboRIO that no
                                            // longer exist in deploy directory of this project
                 }
             }
