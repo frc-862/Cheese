@@ -74,7 +74,8 @@ public class MacMini {
             DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
 
             while (true) {
-                posePublisher.set(getEstimatedPose().pose().estimatedPose.toPose2d());
+                System.out.println("Yes");
+                posePublisher.set(getEstimatedPose().pose == null ? null : getEstimatedPose().pose().estimatedPose.toPose2d());
 
                 ambiguityPublisher.set(getEstimatedPose().result()==null ? 1 : getEstimatedPose().result().getBestTarget().poseAmbiguity);
                 timestampPublisher.set(getEstimatedPose().result()==null ? -1 : getEstimatedPose().result().getTimestampSeconds());

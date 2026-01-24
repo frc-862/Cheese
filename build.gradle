@@ -72,6 +72,7 @@ task runMac(type: JavaExec) {
 
     // Depend on native library extraction
     dependsOn 'extractReleaseNative'
+    dependsOn macJar
 
     // Point to extracted native libraries
     systemProperty 'java.library.path', "${buildDir}/jni/release"
