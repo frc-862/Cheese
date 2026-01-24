@@ -40,7 +40,8 @@ public class MacMini {
                     // Get the path to the field from the deploy directory
                     Path fieldPath = Path.of(
                         System.getProperty("user.home"),
-                        "photonvision",
+                        "Users",
+                        "lightning",
                         "field_layout.json"
                     );
 
