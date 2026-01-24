@@ -62,12 +62,26 @@ task macJar(type: Jar) {
 jar.dependsOn macJar
 build.dependsOn macJar
 
+// Task to run the Mac standalone program locally
 task runMac(type: JavaExec) {
     group = 'application'
-    description = 'Runs the Mac Robot code.'
+    description = 'Runs the Mac Mini vision processor standalone program'
 
-    classpath = sourceSets.macbot.runtimeClasspath
-    mainClass.set(MAC_MAIN_CLASS)
+    mainClass = MAC_MAIN_CLASS
+    classpath = sourceSets.main.runtimeClasspath + sourceSets.macbot.runtimeClasspath
+
+    // Depend on native library extraction
+    dependsOn 'extractReleaseNative'
+
+    // Point to extracted native libraries
+    systemProperty 'java.library.path', "${buildDir}/jni/release"
+
+    // Configure this task with WPILib simulation libraries after project evaluation
+    project.afterEvaluate {
+        // Add native and simulation libraries to classpath
+        classpath += configurations.nativeRelease
+        classpath += configurations.simulationRelease
+    }
 }
 
 def ROBOT_MAIN_CLASS = "frc.robot.Main"
