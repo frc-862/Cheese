@@ -5,6 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.DoubleSubscriber;
@@ -15,6 +16,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.ExtraSmartShoot;
 import frc.robot.commands.SmartCollect;
+import frc.robot.commands.otf.MinimalAimAtTarget;
 import frc.robot.commands.otf.ShootAtTarget;
 import frc.robot.constants.CollectorConstants;
 import frc.robot.constants.ControllerConstants;
@@ -151,6 +153,7 @@ public class RobotContainer extends LightningContainer {
         //     .whileTrue(leds.enableState(LED_STATES.SINGLE_CONTROLLER.ID()));
         
         new Trigger(() -> driver.getAButton()).whileTrue(new ShootAtTarget(drivetrain, shooter, indexer, new Translation3d(11.915394, 4.034536, 0)));
+        new Trigger(() -> driver.getBButton()).whileTrue(new MinimalAimAtTarget(drivetrain, new Translation2d(11.915394, 4.034536)));
     }
 
     @Override

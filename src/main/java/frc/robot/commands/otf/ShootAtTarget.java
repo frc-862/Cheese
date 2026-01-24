@@ -8,6 +8,7 @@ import java.util.function.DoubleSupplier;
 
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.PIDController;
@@ -15,7 +16,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N2;
-import edu.wpi.first.math.util.Units;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.Radians;
@@ -114,7 +114,7 @@ public class ShootAtTarget extends Command {
 
         Rotation2d swerveAngle = swerve.getPose().getRotation();
 
-        double clippedAngularRate = Math.max(-1, Math.min(1, anglePID.calculate(swerveAngle.getDegrees(), robotTargetAngle.in(Degrees))));
+        double clippedAngularRate = MathUtil.clamp(anglePID.calculate(swerveAngle.getDegrees(), robotTargetAngle.in(Degrees)), -1, 1);
 
         swerve.setControl(DriveRequests.getAutoDriveInstance(
             yMovement == null ? 0 : -yMovement.getAsDouble(), 
@@ -146,7 +146,7 @@ public class ShootAtTarget extends Command {
     private Vector<N2> getStationaryShootingVector() {
         // Get our robots target angle
         Translation2d deltaTranslation = target.toTranslation2d().minus(swerve.getTranslation2d());
-        Rotation2d stationaryTargetAngle = new Rotation2d(Units.degreesToRadians(90)).minus(deltaTranslation.getAngle());
+        Rotation2d stationaryTargetAngle = deltaTranslation.getAngle();
 
         // Get our target ball target velocity
         double velocity = Math.sqrt((deltaTranslation.getNorm()*9.81)/Math.sin(Math.toRadians(2*verticalShootingAngle.in(Radians))));
