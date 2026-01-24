@@ -26,13 +26,13 @@ public class MacMini {
         CameraInfo[] cameras;
 
         public  MacMini() {
-            System.out.println("[PHOTON VISION] Starting Mac Mini Vision Processor");
+            log("Starting Mac Mini Vision Processor");
 
             cameras = new CameraInfo[VisionConstants.CAMERA_CONSTANTS.length];
             
             // Create the cameras
             for (int i = 0; i < VisionConstants.CAMERA_CONSTANTS.length; i++) {
-                System.out.println("[PHOTON VISION] Creating " + VisionConstants.CAMERA_CONSTANTS[i].name() + " info");
+                log("Creating " + VisionConstants.CAMERA_CONSTANTS[i].name() + " info");
                 AprilTagFieldLayout fieldLayout;
 
                 try {
@@ -74,7 +74,7 @@ public class MacMini {
             DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
 
             while (true) {
-                System.out.println("Yes");
+                log("Running vision processing loop");
                 posePublisher.set(getEstimatedPose().pose == null ? null : getEstimatedPose().pose().estimatedPose.toPose2d());
 
                 ambiguityPublisher.set(getEstimatedPose().result()==null ? 1 : getEstimatedPose().result().getBestTarget().poseAmbiguity);
