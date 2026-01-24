@@ -46,7 +46,7 @@ public class MacMini {
                     fieldLayout = new AprilTagFieldLayout(fieldPath);
                 } catch (Exception e) {
                     // Just use the default field if we can't get it
-                    log("[PHOTON VISION] Can't load field resource-- using default field");
+                    log("Can't load field resource-- using default field");
                     fieldLayout = VisionConstants.REBUILT_FIELD;
                 }
 

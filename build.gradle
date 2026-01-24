@@ -41,10 +41,10 @@ task macJar(type: Jar) {
     from sourceSets.macbot.output
 
     // Includes all dependencies from parent project
-    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    from { (configurations.runtimeClasspath + configurations.nativeRelease).collect { it.isDirectory() ? it : zipTree(it) } }
 
     // Handle duplicate files
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 
     // Add a manifest if needed
     manifest {
@@ -61,6 +61,14 @@ task macJar(type: Jar) {
 // Ensure the macJar task runs when building the project
 jar.dependsOn macJar
 build.dependsOn macJar
+
+task runMac(type: JavaExec) {
+    group = 'application'
+    description = 'Runs the Mac Robot code.'
+
+    classpath = sourceSets.macbot.runtimeClasspath
+    mainClass.set(MAC_MAIN_CLASS)
+}
 
 def ROBOT_MAIN_CLASS = "frc.robot.Main"
 
@@ -111,12 +119,11 @@ dependencies {
     implementation wpi.java.deps.wpilib()
     implementation wpi.java.vendor.java()
 
-    roborioDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.roborio)
-    roborioDebug wpi.java.vendor.jniDebug(wpi.platforms.roborio)
+    roborioDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.desktop)
+    roborioDebug wpi.java.vendor.jniDebug(wpi.platforms.desktop)
 
-    roborioRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.roborio)
-    roborioRelease wpi.java.vendor.jniRelease(wpi.platforms.roborio)
-
+    roborioRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.desktop)
+    roborioRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
     nativeDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.desktop)
     nativeDebug wpi.java.vendor.jniDebug(wpi.platforms.desktop)
     simulationDebug wpi.sim.enableDebug()
