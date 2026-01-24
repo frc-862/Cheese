@@ -4,8 +4,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
@@ -14,14 +12,12 @@ import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.Filesystem;
-import frc.robot.constants.VisionConstants;
 
 public class MacMini {
         // Camera info
@@ -32,10 +28,13 @@ public class MacMini {
         CameraInfo[] cameras;
 
         public  MacMini() {
+            System.out.println("[PHOTON VISION] Starting Mac Mini Vision Processor");
+
             cameras = new CameraInfo[VisionConstants.CAMERA_CONSTANTS.length];
             
             // Create the cameras
             for (int i = 0; i < VisionConstants.CAMERA_CONSTANTS.length; i++) {
+                System.out.println("[PHOTON VISION] Creating " + VisionConstants.CAMERA_CONSTANTS[i].name() + " info");
                 AprilTagFieldLayout fieldLayout;
 
                 try {
@@ -64,6 +63,7 @@ public class MacMini {
                 // Create the camera
                 cameras[i] = new CameraInfo(camera, poseEstimator);
                 log(VisionConstants.CAMERA_CONSTANTS[i].name() + " info created sucessfully");
+
             }
         }
 
