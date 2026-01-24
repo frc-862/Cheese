@@ -6,7 +6,6 @@ package frc.robot.commands.otf;
 
 import java.util.function.DoubleSupplier;
 
-
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.VecBuilder;
@@ -20,19 +19,16 @@ import edu.wpi.first.math.util.Units;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.Radians;
-import static edu.wpi.first.units.Units.RadiansPerSecond;  
-
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj2.command.Command;
-
 import frc.robot.constants.DrivetrainConstants.DriveRequests;
-import frc.robot.constants.IndexerConstants;
-import frc.robot.constants.ShooterConstants;
 import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Swerve;
+import frc.util.shuffleboard.LightningShuffleboard;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
 public class ShootAtTarget extends Command {
@@ -68,7 +64,8 @@ public class ShootAtTarget extends Command {
 
         this.target = target;
         // TODO: Add constants later
-        anglePID = new PIDController(0.1, 0, 0);
+        anglePID = new PIDController(0.01, 0, 0);
+        anglePID.enableContinuousInput(-180, 180);
 
         // The constnats
         angleTolerance = Degrees.of(5);
@@ -81,6 +78,8 @@ public class ShootAtTarget extends Command {
         
         // Use addRequirements() here to declare subsystem dependencies.
         addRequirements(swerve, shooter, indexer);
+
+        LightningShuffleboard.setDouble("Targeting", "kP", 0);
     }
 
     // Called when the command is initially scheduled.
@@ -96,6 +95,8 @@ public class ShootAtTarget extends Command {
     // Called every time the scheduler runs while the command is scheduled.
     @Override
     public void execute() {
+        anglePID.setP(LightningShuffleboard.getDouble("Targeting", "kP", 0));
+
         // Calculate turret position for on the fly?
         if (xMovement != null && yMovement != null) {
             // Create the known vectors

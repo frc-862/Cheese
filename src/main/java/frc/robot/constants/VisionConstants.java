@@ -21,20 +21,33 @@ public class VisionConstants {
 
     public record CameraConstant(String name, Transform3d offset) {};
 
-    public static final CameraConstant[] CAMERA_CONSTANTS = new CameraConstant[] {
-        new CameraConstant("leftCam", 
+   public static final CameraConstant[] CAMERA_CONSTANTS = new CameraConstant[] {
+        new CameraConstant("leftCam",
             new Transform3d(
-                Inches.of(11.25),
-                Inches.of(-11.25),   // RIGHT side
-                Inches.of(10.5),
-                new Rotation3d(0, 15, -45))),
+                Inches.of(11.25),   // forward
+                Inches.of(11.25),   // LEFT
+                Inches.of(10.5),    // up
+                new Rotation3d(
+                    0.0,
+                    Math.toRadians(-15),  // pitch up
+                    Math.toRadians(45)    // yaw outward (left)
+                )
+            )
+        ),
 
         new CameraConstant("rightCam",
             new Transform3d(
-                Inches.of(11.25),
-                Inches.of(11.25),    // LEFT side
-                Inches.of(10.5),
-                new Rotation3d(0, 15, 45))),
+                Inches.of(11.25),   // forward
+                Inches.of(-11.25),  // RIGHT
+                Inches.of(10.5),    // up
+                new Rotation3d(
+                    0.0,
+                    Math.toRadians(-15),   // pitch up
+                    Math.toRadians(-45)    // yaw outward (right)
+                )
+            )
+        ),
     };
+
 
 }

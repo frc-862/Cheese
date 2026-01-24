@@ -5,17 +5,17 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.ExtraSmartShoot;
 import frc.robot.commands.SmartCollect;
+import frc.robot.commands.otf.ShootAtTarget;
 import frc.robot.constants.CollectorConstants;
 import frc.robot.constants.ControllerConstants;
 import frc.robot.constants.DrivetrainConstants;
@@ -92,19 +92,19 @@ public class RobotContainer extends LightningContainer {
 
     @Override
     protected void configureButtonBindings() {
-        // demo collect & index
-        new Trigger(copilot::getLeftBumperButton).onTrue(collector.applyPower(CollectorConstants.DEFAULT_POWER))
-            .onFalse(collector.applyStop())
-            .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
+        // // demo collect & index
+        // new Trigger(copilot::getLeftBumperButton).onTrue(collector.applyPower(CollectorConstants.DEFAULT_POWER))
+        //     .onFalse(collector.applyStop())
+        //     .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
 
-        new Trigger(copilot::getRightBumperButton).onTrue(collector.applyPower(-CollectorConstants.DEFAULT_POWER))
-            .onFalse(collector.applyStop())
-            .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
+        // new Trigger(copilot::getRightBumperButton).onTrue(collector.applyPower(-CollectorConstants.DEFAULT_POWER))
+        //     .onFalse(collector.applyStop())
+        //     .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
 
-        // demo shoot
-        new Trigger(() -> Math.abs(getCopilotTriggerDifference()) > ControllerConstants.DEADBAND)
-            .whileTrue(shooter.applyPower(() -> getCopilotTriggerDifference() * shooterPowerMultiplier.get())
-            .deadlineFor(leds.enableState(LED_STATES.SHOOTING.ID())));
+        // // demo shoot
+        // new Trigger(() -> Math.abs(getCopilotTriggerDifference()) > ControllerConstants.DEADBAND)
+        //     .whileTrue(shooter.applyPower(() -> getCopilotTriggerDifference() * shooterPowerMultiplier.get())
+        //     .deadlineFor(leds.enableState(LED_STATES.SHOOTING.ID())));
 
         // manual index
         new Trigger(copilot::getXButton).onTrue(indexer.applyPower(CollectorConstants.DEFAULT_POWER))
@@ -115,28 +115,28 @@ public class RobotContainer extends LightningContainer {
             .onFalse(indexer.applyStop())
             .whileTrue(leds.enableState(LED_STATES.COLLECTING.ID()));
         
-        // Extra Smart Shoot
-        new Trigger(copilot::getYButton)
-            .whileTrue(new ExtraSmartShoot(indexer, shooter, RotationsPerSecond.of(shooterRPS.get()))
-            .onSuccess(leds.enableStateWithTimeout(LED_STATES.SHOT.ID(), 5))
-            .deadlineFor(leds.enableState(LED_STATES.COLLECTING.ID())));
+        // // Extra Smart Shoot
+        // new Trigger(copilot::getYButton)
+        //     .whileTrue(new ExtraSmartShoot(indexer, shooter, RotationsPerSecond.of(shooterRPS.get()))
+        //     .onSuccess(leds.enableStateWithTimeout(LED_STATES.SHOT.ID(), 5))
+        //     .deadlineFor(leds.enableState(LED_STATES.COLLECTING.ID())));
 
         // keep flyweheel spun up
-        new Trigger(copilot::getAButton)
-            .whileTrue(new RunCommand(() -> shooter.setVelocity(RotationsPerSecond.of(shooterRPS.get()))) // will be autostopped by coast power
-            .deadlineFor(leds.enableState(LED_STATES.SHOOTING.ID()))); // use run command to avoid requiring shooter
+        // new Trigger(copilot::getAButton)
+        //     .whileTrue(new RunCommand(() -> shooter.setVelocity(RotationsPerSecond.of(shooterRPS.get()))) // will be autostopped by coast power
+        //     .deadlineFor(leds.enableState(LED_STATES.SHOOTING.ID()))); // use run command to avoid requiring shooter
 
-        // robot centric
-        new Trigger(() -> (driver.getLeftTriggerAxis()) > ControllerConstants.DEADBAND).whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
-            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
-            () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get()))).whileTrue(leds.enableState(LED_STATES.ERROR.ID()));
+        // // robot centric
+        // new Trigger(() -> (driver.getLeftTriggerAxis()) > ControllerConstants.DEADBAND).whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
+        //     () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
+        //     () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get(), 
+        //     () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get()))).whileTrue(leds.enableState(LED_STATES.ERROR.ID()));
 
-        // slowmode
-        new Trigger(() -> (driver.getRightTriggerAxis()) > ControllerConstants.DEADBAND).whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
-            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get() * DrivetrainConstants.SLOWMODE_MULTIPLIER,
-            () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get() * DrivetrainConstants.SLOWMODE_MULTIPLIER, 
-            () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get())));
+        // // slowmode
+        // new Trigger(() -> (driver.getRightTriggerAxis()) > ControllerConstants.DEADBAND).whileTrue(drivetrain.applyRequest(DriveRequests.getRobotCentric(
+        //     () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get() * DrivetrainConstants.SLOWMODE_MULTIPLIER,
+        //     () -> -Math.pow(MathUtil.applyDeadband(driver.getLeftY(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get() * DrivetrainConstants.SLOWMODE_MULTIPLIER, 
+        //     () -> -Math.pow(MathUtil.applyDeadband(driver.getRightX(), ControllerConstants.DEADBAND), 3) * driveMultiplier.get())));
 
         // brake
         new Trigger(() -> useSingleController.get() ? false : driver.getXButton()).whileTrue(drivetrain.applyRequest(DriveRequests.getBrake()));
@@ -144,11 +144,13 @@ public class RobotContainer extends LightningContainer {
         // reset field forward
         new Trigger(() -> driver.getStartButton() && driver.getBackButton()).onTrue(drivetrain.commandResetFieldForward()).whileTrue(leds.enableState(LED_STATES.ERROR.ID()));
 
-        // switch to single controller mode when enabled
-        new Trigger(useSingleController::get)
-            .onTrue(new InstantCommand(() -> copilot = driver))
-            .onFalse(new InstantCommand(() -> copilot = storedCopilot))
-            .whileTrue(leds.enableState(LED_STATES.SINGLE_CONTROLLER.ID()));
+        // // switch to single controller mode when enabled
+        // new Trigger(useSingleController::get)
+        //     .onTrue(new InstantCommand(() -> copilot = driver))
+        //     .onFalse(new InstantCommand(() -> copilot = storedCopilot))
+        //     .whileTrue(leds.enableState(LED_STATES.SINGLE_CONTROLLER.ID()));
+        
+        new Trigger(() -> driver.getAButton()).whileTrue(new ShootAtTarget(drivetrain, shooter, indexer, new Translation3d(11.915394, 4.034536, 0)));
     }
 
     @Override

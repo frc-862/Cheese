@@ -23,6 +23,7 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 import com.ctre.phoenix6.Utils;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DataLogManager;
@@ -88,7 +89,7 @@ public class PhotonVision extends SubsystemBase {
             drivetrain.addVisionMeasurement(
                 updatedPose.pose.estimatedPose.toPose2d(), 
                 Utils.fpgaToCurrentTime(updatedPose.pose.timestampSeconds), 
-                VecBuilder.fill(bestTagAmbiguity, bestTagAmbiguity, bestTagAmbiguity));
+                VecBuilder.fill(bestTagAmbiguity*1.7, bestTagAmbiguity*1.7, bestTagAmbiguity*1.7));
             log("Added vision measurment");
         }
     }
@@ -126,7 +127,7 @@ public class PhotonVision extends SubsystemBase {
                 // Get the pose estimator
                 PhotonPoseEstimator poseEstimator =
                         new PhotonPoseEstimator(
-                                fieldLayout,
+                                AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded),
                                 VisionConstants.CAMERA_CONSTANTS[i].offset()
                         );
                     
@@ -155,7 +156,7 @@ public class PhotonVision extends SubsystemBase {
 
                 return getBestPose(poses);
             } catch (Exception e) {
-                log("Failed to get pose");
+                // log("Failed to get pose");
                 e.printStackTrace();
                 return null;
             }
@@ -194,7 +195,7 @@ public class PhotonVision extends SubsystemBase {
                     bestPose = info;
                 }
             }
-            log("Got best pose");
+            // log("Got best pose");
             return bestPose;
         }
 
@@ -205,7 +206,7 @@ public class PhotonVision extends SubsystemBase {
 
             // If theres no results just skip this iteration
             if (results.isEmpty()) {
-                log(cameraInfo.camera.getName() + "'s Result is null");
+                // log(cameraInfo.camera.getName() + "'s Result is null");
                 return null;
             }
             
@@ -252,7 +253,7 @@ public class PhotonVision extends SubsystemBase {
                 // The pose
                 EstimatedRobotPose pose = poseOpt.get();
                 
-                log("Used multitag result");
+                // log("Used multitag result");
 
                 // Add the vision measurment
                 return new VisionInfo(useableResult, pose);
@@ -264,7 +265,7 @@ public class PhotonVision extends SubsystemBase {
                     // The pose
                     EstimatedRobotPose pose = poseOpt.get();
 
-                    log("Used singletag result");
+                    // log("Used singletag result");
 
                     // Add the vision measurment
                     return new VisionInfo(useableResult, pose);
