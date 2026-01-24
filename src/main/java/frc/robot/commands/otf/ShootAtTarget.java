@@ -6,8 +6,6 @@ package frc.robot.commands.otf;
 
 import java.util.function.DoubleSupplier;
 
-import com.ctre.phoenix6.swerve.SwerveRequest;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
@@ -28,7 +26,6 @@ import frc.robot.constants.DrivetrainConstants.DriveRequests;
 import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Swerve;
-import frc.util.shuffleboard.LightningShuffleboard;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
 public class ShootAtTarget extends Command {
@@ -64,8 +61,9 @@ public class ShootAtTarget extends Command {
 
         this.target = target;
         // TODO: Add constants later
-        anglePID = new PIDController(0.01, 0, 0);
+        anglePID = new PIDController(0.002, 0, 0);
         anglePID.enableContinuousInput(-180, 180);
+        anglePID.setTolerance(1);
 
         // The constnats
         angleTolerance = Degrees.of(5);
@@ -78,8 +76,6 @@ public class ShootAtTarget extends Command {
         
         // Use addRequirements() here to declare subsystem dependencies.
         addRequirements(swerve, shooter, indexer);
-
-        LightningShuffleboard.setDouble("Targeting", "kP", 0);
     }
 
     // Called when the command is initially scheduled.
@@ -95,8 +91,6 @@ public class ShootAtTarget extends Command {
     // Called every time the scheduler runs while the command is scheduled.
     @Override
     public void execute() {
-        anglePID.setP(LightningShuffleboard.getDouble("Targeting", "kP", 0));
-
         // Calculate turret position for on the fly?
         if (xMovement != null && yMovement != null) {
             // Create the known vectors
@@ -114,12 +108,12 @@ public class ShootAtTarget extends Command {
 
         Rotation2d swerveAngle = swerve.getPose().getRotation();
 
-        double clippedAngularRate = MathUtil.clamp(anglePID.calculate(swerveAngle.getDegrees(), robotTargetAngle.in(Degrees)), -1, 1);
+        double clampedAngularRate = MathUtil.clamp(anglePID.calculate(swerveAngle.getDegrees(), robotTargetAngle.in(Degrees)), -1, 1);
 
         swerve.setControl(DriveRequests.getAutoDriveInstance(
             yMovement == null ? 0 : -yMovement.getAsDouble(), 
             xMovement == null ? 0 : -xMovement.getAsDouble(),
-            -clippedAngularRate));
+            clampedAngularRate));
 
         // if (Math.abs(swerveAngle.getDegrees() - robotTargetAngle.in(Degrees)) < angleTolerance.in(Degrees) && clippedAngularRate < 0.3) {
         //     shooter.setVelocity(shooterTargetVelocity);
@@ -134,7 +128,6 @@ public class ShootAtTarget extends Command {
     @Override
     public void end(boolean interrupted) {
         shooter.stop();
-        swerve.setControl(new SwerveRequest.Idle());
     }
 
     // Returns true when the command should end.
@@ -149,8 +142,8 @@ public class ShootAtTarget extends Command {
         Rotation2d stationaryTargetAngle = deltaTranslation.getAngle();
 
         // Get our target ball target velocity
-        double velocity = Math.sqrt((deltaTranslation.getNorm()*9.81)/Math.sin(Math.toRadians(2*verticalShootingAngle.in(Radians))));
-
+        double velocity = Math.sqrt((deltaTranslation.getNorm()*9.81)/Math.sin(2*verticalShootingAngle.in(Radians)));
+  
         // Create the known vectors
         return VecBuilder.fill(Math.cos(stationaryTargetAngle.getRadians()) * velocity, Math.sin(stationaryTargetAngle.getRadians()) * velocity);
     }
