@@ -16,8 +16,6 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
-import edu.wpi.first.wpilibj.DataLogManager;
-import edu.wpi.first.wpilibj.Filesystem;
 
 public class MacMini {
         // Camera info
@@ -39,14 +37,16 @@ public class MacMini {
 
                 try {
                     // Get the path to the field from the deploy directory
-                    Path fieldPath = Filesystem.getDeployDirectory()
-                        .toPath()
-                        .resolve("field0120.json");
+                    Path fieldPath = Path.of(
+                        System.getProperty("user.home"),
+                        "photonvision",
+                        "field_layout.json"
+                    );
 
-                    // fieldLayout = new AprilTagFieldLayout().loadField(AprilTagFields.k);
+                    fieldLayout = new AprilTagFieldLayout(fieldPath);
                 } catch (Exception e) {
                     // Just use the default field if we can't get it
-                    DataLogManager.log("[PHOTON VISION] Can't load field resource-- using default field");
+                    log("[PHOTON VISION] Can't load field resource-- using default field");
                     fieldLayout = VisionConstants.REBUILT_FIELD;
                 }
 
@@ -54,7 +54,7 @@ public class MacMini {
                 PhotonPoseEstimator poseEstimator =
                         new PhotonPoseEstimator(
                                 VisionConstants.REBUILT_FIELD,
-                                 VisionConstants.CAMERA_CONSTANTS[i].offset()
+                                VisionConstants.CAMERA_CONSTANTS[i].offset()
                         );
                     
                 // Create the camera using the name from our constant
