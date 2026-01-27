@@ -153,7 +153,7 @@ public class RobotContainer extends LightningContainer {
         //     .whileTrue(leds.enableState(LED_STATES.SINGLE_CONTROLLER.ID()));
         
         new Trigger(() -> driver.getAButton()).whileTrue(new ShootAtTarget(drivetrain, shooter, indexer, new Translation3d(11.915394, 4.034536, 0)));
-        new Trigger(() -> driver.getBButton()).whileTrue(new MinimalAimAtTarget(drivetrain, new Translation2d(11.915394, 4.034536)));
+        new Trigger(() -> driver.getBButton()).whileTrue(new MinimalAimAtTarget(drivetrain, new Translation2d(11.915394, 4.034536), () -> driver.getLeftX(), () -> driver.getLeftY()));
     }
 
     @Override

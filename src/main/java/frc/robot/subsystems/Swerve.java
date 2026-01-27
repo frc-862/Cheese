@@ -28,9 +28,9 @@ import frc.util.shuffleboard.LightningShuffleboard;
 public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
-    private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kCW_90deg;
+    private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
     /* Red alliance sees forward as 180 degrees (toward blue alliance wall) */
-    private static final Rotation2d kRedAlliancePerspectiveRotation = Rotation2d.kCCW_90deg;
+    private static final Rotation2d kRedAlliancePerspectiveRotation = Rotation2d.k180deg;
     /* Keep track if we've ever applied the operator perspective before or not */
     private boolean m_hasAppliedOperatorPerspective = false;
 

@@ -1,3 +1,4 @@
+// haha
 // Copyright (c) FIRST and other WPILib contributors.
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
@@ -23,6 +24,8 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.constants.DrivetrainConstants.DriveRequests;
+import frc.robot.constants.IndexerConstants;
+import frc.robot.constants.ShooterConstants;
 import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Swerve;
@@ -39,7 +42,6 @@ public class ShootAtTarget extends Command {
     PIDController anglePID;
 
     // Some constnats to add later
-    Angle angleTolerance;
     Distance flyWheelRadius;
     Angle verticalShootingAngle;
 
@@ -60,13 +62,12 @@ public class ShootAtTarget extends Command {
         this.indexer = indexer;
 
         this.target = target;
-        // TODO: Add constants later
+
         anglePID = new PIDController(0.002, 0, 0);
         anglePID.enableContinuousInput(-180, 180);
         anglePID.setTolerance(1);
 
         // The constnats
-        angleTolerance = Degrees.of(5);
         flyWheelRadius = Meters.of(0.2); // in meters (est.)
         verticalShootingAngle = Degrees.of(15);
 
@@ -98,7 +99,6 @@ public class ShootAtTarget extends Command {
             Vector<N2> robotVelocityVector = swerve.getFieldRelativeVelocity();
 
             // Solve for the target vector
-            // TODO: Compensate for angular rate if we need to
             Vector<N2> shooterTargetVector = stationaryShootVelocityVector.minus(robotVelocityVector);
             
             // Set the values based on the target vector
@@ -115,13 +115,13 @@ public class ShootAtTarget extends Command {
             xMovement == null ? 0 : -xMovement.getAsDouble(),
             clampedAngularRate));
 
-        // if (Math.abs(swerveAngle.getDegrees() - robotTargetAngle.in(Degrees)) < angleTolerance.in(Degrees) && clippedAngularRate < 0.3) {
-        //     shooter.setVelocity(shooterTargetVelocity);
-        //     indexer.setPower(IndexerConstants.DEFAULT_POWER);
-        // } else {
-        //     shooter.applyPower(ShooterConstants.COAST_POWER);
-        //     indexer.stop();
-        // }
+        if (anglePID.atSetpoint() && Math.abs(clampedAngularRate) < 0.2) {
+            shooter.setVelocity(shooterTargetVelocity);
+            indexer.setPower(IndexerConstants.DEFAULT_POWER);
+        } else {
+            shooter.applyPower(ShooterConstants.COAST_POWER);
+            indexer.stop();
+        }
     }
 
     // Called once the command ends or is interrupted.
@@ -151,7 +151,7 @@ public class ShootAtTarget extends Command {
     /**
      * Add drive movement while continuing to aim and shoot at a target
      * @param x Movement in the x direction
-     * @param y Movementn in teh y direction
+     * @param y Movement in the y direction
      * @return this
      */
     public ShootAtTarget withMovement(DoubleSupplier x, DoubleSupplier y) {

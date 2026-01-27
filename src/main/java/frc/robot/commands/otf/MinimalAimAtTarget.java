@@ -1,5 +1,7 @@
 package frc.robot.commands.otf;
 
+import java.util.function.DoubleSupplier;
+
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -15,11 +17,14 @@ public class MinimalAimAtTarget extends Command {
 
     PIDController pid;
 
-    public MinimalAimAtTarget(Swerve swerve, Translation2d target) {
+    DoubleSupplier xPower;
+    DoubleSupplier yPower;
+
+    public MinimalAimAtTarget(Swerve swerve, Translation2d target, DoubleSupplier xPower, DoubleSupplier yPower) {
         this.swerve = swerve;
         this.target = target;
 
-        this.pid = new PIDController(0.02, 0.0, 0.001);
+        this.pid = new PIDController(0.002, 0.0, 0);
         pid.enableContinuousInput(-180, 180);
         pid.setTolerance(1.0);
 
@@ -36,12 +41,14 @@ public class MinimalAimAtTarget extends Command {
 
     @Override 
     public void execute() {
-        pid.setP(LightningShuffleboard.getDouble("Targeting", "kP", 0));
+        targetAngle = target.minus(swerve.getPose().getTranslation()).getAngle().getDegrees();
+
+        pid.setP(LightningShuffleboard.getDouble("Targeting", "kP", 0.002));
         pid.setD(LightningShuffleboard.getDouble("Targeting", "kD", 0));
 
         double power = pid.calculate((swerve.getPose().getRotation().getDegrees()), targetAngle);
 
-        swerve.setControl(DrivetrainConstants.DriveRequests.getAutoDriveInstance(0, 0, power));
+        swerve.setControl(DrivetrainConstants.DriveRequests.getAutoDriveInstance(-yPower.getAsDouble(), -xPower.getAsDouble(), power));
     }
 
     @Override
