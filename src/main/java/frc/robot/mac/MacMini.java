@@ -12,6 +12,7 @@ import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -39,7 +40,8 @@ public class MacMini {
                     // Get the path to the field from the deploy directory
                     Path fieldPath = Path.of(
                         System.getProperty("user.home"),
-                        "photonvision",
+                        "Users",
+                        "lightning",
                         "field_layout.json"
                     );
 
@@ -47,13 +49,13 @@ public class MacMini {
                 } catch (Exception e) {
                     // Just use the default field if we can't get it
                     log("Can't load field resource-- using default field");
-                    fieldLayout = VisionConstants.REBUILT_FIELD;
+                    fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
                 }
 
                 // Get the pose estimator
                 PhotonPoseEstimator poseEstimator =
                         new PhotonPoseEstimator(
-                                VisionConstants.REBUILT_FIELD,
+                                fieldLayout,
                                 VisionConstants.CAMERA_CONSTANTS[i].offset()
                         );
                     
