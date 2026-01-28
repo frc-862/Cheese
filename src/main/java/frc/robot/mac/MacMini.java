@@ -27,6 +27,10 @@ public class MacMini {
         CameraInfo[] cameras;
 
         public  MacMini() {
+            NetworkTableInstance inst = NetworkTableInstance.getDefault();
+            inst.setServer("localhost", 5810);
+            
+
             cameras = new CameraInfo[VisionConstants.CAMERA_CONSTANTS.length];
             
             // Create the cameras
@@ -58,7 +62,7 @@ public class MacMini {
                         );
                     
                 // Create the camera using the name from our constant
-                PhotonCamera camera = new PhotonCamera(VisionConstants.CAMERA_CONSTANTS[i].name());
+                PhotonCamera camera = new PhotonCamera(inst, VisionConstants.CAMERA_CONSTANTS[i].name());
 
                 // Create the camera
                 cameras[i] = new CameraInfo(camera, poseEstimator);
@@ -67,6 +71,10 @@ public class MacMini {
 
         public void run() {
             NetworkTableInstance nt = NetworkTableInstance.getDefault();
+            nt.startClient4("mac-mini");
+            nt.setServerTeam(862);
+            nt.startDSClient();
+
             StructPublisher<Pose2d> posePublisher = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish();
             DoublePublisher ambiguityPublisher = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish();
             DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
