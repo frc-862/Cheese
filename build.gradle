@@ -41,7 +41,9 @@ task macJar(type: Jar) {
     from sourceSets.macbot.output
 
     // Includes all dependencies from parent project
-    from { (configurations.runtimeClasspath + configurations.nativeRelease).collect { it.isDirectory() ? it : zipTree(it) } }
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+
+    // from { (configurations.runtimeClasspath + configurations.nativeRelease).collect { it.isDirectory() ? it : zipTree(it) } }
 
     // Handle duplicate files
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
