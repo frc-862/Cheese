@@ -93,7 +93,7 @@ public class PhotonVision extends SubsystemBase {
  
     @Override
     public void periodic() {
-        if (pose.get() != null) {
+        if (pose.get() != null && pose.get().pose != null && pose.get().ambiguity < 1 && pose.get().timestamp > 0) {
             VisionInfo updatedPose = pose.getAndSet(null);
 
             double bestTagAmbiguity = updatedPose.ambiguity();

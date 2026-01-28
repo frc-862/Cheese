@@ -34,7 +34,7 @@ afterEvaluate {
 
 // Define a new Jar task for the files in frc/robot/mac
 task macJar(type: Jar) {
-    group = 'build'
+    group = 'application'
     description = 'Assembles a JAR containing the files in frc/robot/mac.'
 
     // Include files from the specified directory
@@ -58,21 +58,16 @@ task macJar(type: Jar) {
     destinationDirectory = file("src/main/deploy")
 }
 
-// Ensure the macJar task runs when building the project
-jar.dependsOn macJar
-build.dependsOn macJar
-
 // Task to run the Mac standalone program locally
 task runMac(type: JavaExec) {
     group = 'application'
     description = 'Runs the Mac Mini vision processor standalone program'
 
+    classpath = files('/Users/lightning/MacRobot.jar')
     mainClass = MAC_MAIN_CLASS
-    classpath = sourceSets.main.runtimeClasspath + sourceSets.macbot.runtimeClasspath
 
     // Depend on native library extraction
     dependsOn 'extractReleaseNative'
-    dependsOn macJar
 
     // Point to extracted native libraries
     systemProperty 'java.library.path', "${buildDir}/jni/release"
@@ -112,6 +107,12 @@ deploy {
                     directory = '/home/lvuser/deploy'
                     deleteOldFiles = true // Change to true to delete files on roboRIO that no
                                            // longer exist in deploy directory of this project
+                }
+
+                frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
+                    postdeploy << { ctx ->
+                        ctx.execute('/etc/init.d/update-mac')
+                    }
                 }
             }
         }

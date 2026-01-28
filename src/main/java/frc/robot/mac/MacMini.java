@@ -27,8 +27,6 @@ public class MacMini {
         CameraInfo[] cameras;
 
         public  MacMini() {
-            log("Starting Mac Mini Vision Processor");
-
             cameras = new CameraInfo[VisionConstants.CAMERA_CONSTANTS.length];
             
             // Create the cameras
@@ -64,8 +62,6 @@ public class MacMini {
 
                 // Create the camera
                 cameras[i] = new CameraInfo(camera, poseEstimator);
-                log(VisionConstants.CAMERA_CONSTANTS[i].name() + " info created sucessfully");
-
             }
         }
 
@@ -76,11 +72,16 @@ public class MacMini {
             DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
 
             while (true) {
-                log("Running vision processing loop");
                 posePublisher.set(getEstimatedPose().pose == null ? null : getEstimatedPose().pose().estimatedPose.toPose2d());
 
                 ambiguityPublisher.set(getEstimatedPose().result()==null ? 1 : getEstimatedPose().result().getBestTarget().poseAmbiguity);
                 timestampPublisher.set(getEstimatedPose().result()==null ? -1 : getEstimatedPose().result().getTimestampSeconds());
+                
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -138,7 +139,6 @@ public class MacMini {
                     bestPose = info;
                 }
             }
-            log("Got best pose");
             return bestPose == null ? new VisionInfo(null, null) : bestPose;
         }
 
@@ -147,8 +147,6 @@ public class MacMini {
 
             List<PhotonPipelineResult> results = camera.getAllUnreadResults();
 
-            log("Results recieved" + results.size());
-            
             // If theres no results just skip this iteration
             if (results.isEmpty()) {
                 log(cameraInfo.camera.getName() + "'s Result is null");
@@ -198,8 +196,6 @@ public class MacMini {
                 // The pose
                 EstimatedRobotPose pose = poseOpt.get();
                 
-                log("Used multitag result");
-
                 // Add the vision measurment
                 return new VisionInfo(useableResult, pose);
             } else {
@@ -209,8 +205,6 @@ public class MacMini {
                 if (poseOpt.isPresent()) {
                     // The pose
                     EstimatedRobotPose pose = poseOpt.get();
-
-                    log("Used singletag result");
 
                     // Add the vision measurment
                     return new VisionInfo(useableResult, pose);
