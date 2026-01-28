@@ -24,6 +24,9 @@ public class MinimalAimAtTarget extends Command {
         this.swerve = swerve;
         this.target = target;
 
+        this.yPower = yPower;
+        this.xPower = xPower;
+
         this.pid = new PIDController(0.002, 0.0, 0);
         pid.enableContinuousInput(-180, 180);
         pid.setTolerance(1.0);
@@ -43,12 +46,9 @@ public class MinimalAimAtTarget extends Command {
     public void execute() {
         targetAngle = target.minus(swerve.getPose().getTranslation()).getAngle().getDegrees();
 
-        pid.setP(LightningShuffleboard.getDouble("Targeting", "kP", 0.002));
-        pid.setD(LightningShuffleboard.getDouble("Targeting", "kD", 0));
-
         double power = pid.calculate((swerve.getPose().getRotation().getDegrees()), targetAngle);
 
-        swerve.setControl(DrivetrainConstants.DriveRequests.getAutoDriveInstance(-yPower.getAsDouble(), -xPower.getAsDouble(), power));
+        swerve.setControl(DrivetrainConstants.DriveRequests.getAutoDriveInstance(-yPower.getAsDouble() * 0.1, -xPower.getAsDouble() * 0.1, power));
     }
 
     @Override
