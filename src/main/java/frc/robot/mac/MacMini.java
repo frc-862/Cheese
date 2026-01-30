@@ -14,6 +14,7 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
@@ -26,10 +27,10 @@ public class MacMini {
         // Cameras
         CameraInfo[] cameras;
 
-        public  MacMini() {
-            NetworkTableInstance inst = NetworkTableInstance.getDefault();
-            inst.setServer("localhost", 5810);
-            
+        public MacMini() {
+            NetworkTableInstance photonNT = NetworkTableInstance.create();
+            photonNT.setServer("localhost", 5810);
+            photonNT.startClient4("mac-photon-client");
 
             cameras = new CameraInfo[VisionConstants.CAMERA_CONSTANTS.length];
             
@@ -62,7 +63,7 @@ public class MacMini {
                         );
                     
                 // Create the camera using the name from our constant
-                PhotonCamera camera = new PhotonCamera(inst, VisionConstants.CAMERA_CONSTANTS[i].name());
+                PhotonCamera camera = new PhotonCamera(photonNT, VisionConstants.CAMERA_CONSTANTS[i].name());
 
                 // Create the camera
                 cameras[i] = new CameraInfo(camera, poseEstimator);
@@ -70,20 +71,37 @@ public class MacMini {
         }
 
         public void run() {
-            NetworkTableInstance nt = NetworkTableInstance.getDefault();
-            nt.startClient4("mac-mini");
-            nt.setServerTeam(862);
-            nt.startDSClient();
+            System.out.println("Something is running");
+
+            NetworkTableInstance nt = NetworkTableInstance.create();
+            nt.setServer("10.8.62.2", 5810);
+            nt.startClient4("mac-rio-client");
+
+            try {
+                Thread.sleep(2000);
+            } catch (Exception e) {
+            }
+            
+
+            System.out.println("Handle: " + nt.getHandle());
+            System.out.println("Is connected: " + nt.isConnected());
+            System.out.println("Is valued: " + nt.isValid());
 
             StructPublisher<Pose2d> posePublisher = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish();
             DoublePublisher ambiguityPublisher = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish();
             DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
 
-            while (true) {
-                posePublisher.set(getEstimatedPose().pose == null ? null : getEstimatedPose().pose().estimatedPose.toPose2d());
+            posePublisher.set(new Pose2d(-1, 0, new Rotation2d()));
+            ambiguityPublisher.set(1);
+            timestampPublisher.set(-1);
 
-                ambiguityPublisher.set(getEstimatedPose().result()==null ? 1 : getEstimatedPose().result().getBestTarget().poseAmbiguity);
-                timestampPublisher.set(getEstimatedPose().result()==null ? -1 : getEstimatedPose().result().getTimestampSeconds());
+            VisionInfo info = getEstimatedPose();
+
+            while (true) {
+                posePublisher.set(info.pose == null ? new Pose2d(-1, 0, new Rotation2d()): info.pose().estimatedPose.toPose2d());
+
+                ambiguityPublisher.set(info.result()==null ? 1 : info.result().getBestTarget().poseAmbiguity);
+                timestampPublisher.set(info.result()==null ? -1 : info.result().getTimestampSeconds());
                 
                 try {
                     Thread.sleep(1);

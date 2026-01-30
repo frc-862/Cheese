@@ -13,6 +13,7 @@ import com.ctre.phoenix6.Utils;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructSubscriber;
@@ -37,16 +38,16 @@ public class PhotonVision extends SubsystemBase {
      */
     public PhotonVision(Swerve drivetrain) {
         this.drivetrain = drivetrain;
-
+    
         executor1 = Executors.newSingleThreadScheduledExecutor();
-
+    
         pose = new AtomicReference<>(null);
-
+    
         NetworkTableInstance nt = NetworkTableInstance.getDefault();
-        StructSubscriber<Pose2d> poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d());
+        StructSubscriber<Pose2d> poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d()));
         DoubleSubscriber ambiguitySubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(1);
-        DoubleSubscriber timestampSubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(-1);
-
+        DoubleSubscriber timestampSubscriber = nt.getTable("Mac").getDoubleTopic("pose_timestamp").subscribe(-1);
+    
         executor1.schedule(() -> {
             while (true) { 
                 Pose2d localPose = null;
@@ -55,7 +56,7 @@ public class PhotonVision extends SubsystemBase {
 
                 if (poseSubscriber.exists()) {
                     Pose2d value = poseSubscriber.get();
-                    if (value == null) {
+                    if (value.getX() < 0) {
                         pose.set(null);
                         continue;
                     }
