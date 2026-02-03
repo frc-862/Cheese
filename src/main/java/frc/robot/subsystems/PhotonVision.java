@@ -93,10 +93,14 @@ public class PhotonVision extends SubsystemBase {
         }
 
         if (tablesInitialized) {
+            // Direct read comparison
+            var counterEntry = nt.getTable("Mac").getEntry("result_counter");
+            long directValue = counterEntry.getInteger(-999);
+
             int count = (int) resultCounterSubscriber.get();
             long counterTs = resultCounterSubscriber.getLastChange();
-            log("Tables initialized. Counter: " + count + ", Previous: " + previousCounter +
-                ", LastChange: " + counterTs + ", Topic: " + resultCounterSubscriber.getTopic().getName());
+            log("Counter - Subscriber: " + count + ", Direct: " + directValue +
+                ", LastChange: " + counterTs + ", Previous: " + previousCounter);
 
             // Only process if we have a valid counter and it's new data
             if (count != -1 && count > previousCounter) {
