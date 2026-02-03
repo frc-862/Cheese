@@ -84,12 +84,19 @@ public class PhotonVision extends SubsystemBase {
 
             if (tablesInitialized) {
                 log("Tables Initialized - all topics now exist");
+
+                // Debug: Try reading the counter value directly from the table
+                var counterEntry = nt.getTable("Mac").getEntry("result_counter");
+                log("Direct table read - Counter exists: " + counterEntry.exists() +
+                    ", Value: " + counterEntry.getInteger(-999));
             }
         }
 
         if (tablesInitialized) {
             int count = (int) resultCounterSubscriber.get();
-            log("Tables initialized. Counter: " + count + ", Previous: " + previousCounter);
+            long counterTs = resultCounterSubscriber.getLastChange();
+            log("Tables initialized. Counter: " + count + ", Previous: " + previousCounter +
+                ", LastChange: " + counterTs + ", Topic: " + resultCounterSubscriber.getTopic().getName());
 
             // Only process if we have a valid counter and it's new data
             if (count != -1 && count > previousCounter) {
