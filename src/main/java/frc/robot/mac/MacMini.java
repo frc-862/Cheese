@@ -82,7 +82,7 @@ public class MacMini {
         public void run() {
             System.out.println("Something is running");
 
-            nt.setServer("10.8.62.2", 5810);
+            nt.setServer("10.8.62.2");  // Use default NT4 port
             nt.startClient4("mac-rio-client");
 
             // #region agent log

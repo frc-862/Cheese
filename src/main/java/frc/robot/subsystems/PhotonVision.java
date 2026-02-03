@@ -49,8 +49,11 @@ public class PhotonVision extends SubsystemBase {
 
         nt = NetworkTableInstance.getDefault();
 
-        log("NetworkTables instance - Handle: " + nt.getHandle() + ", Connected: " +
-            nt.isConnected() + ", Server: " + nt.getServer());
+        var connections = nt.getConnections();
+        log("NetworkTables instance - Handle: " + nt.getHandle() +
+            ", NetworkMode: " + nt.getNetworkMode() +
+            ", Connections: " + connections.length +
+            (connections.length > 0 ? ", First: " + connections[0].remote_id + "@" + connections[0].remote_ip : ""));
 
         poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d()));
         ambiguitySubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(1);
