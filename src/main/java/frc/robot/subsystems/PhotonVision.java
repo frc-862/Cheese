@@ -49,10 +49,15 @@ public class PhotonVision extends SubsystemBase {
 
         nt = NetworkTableInstance.getDefault();
 
+        log("NetworkTables instance - Handle: " + nt.getHandle() + ", Connected: " +
+            nt.isConnected() + ", Server: " + nt.getServer());
+
         poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d()));
         ambiguitySubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(1);
         timestampSubscriber = nt.getTable("Mac").getDoubleTopic("pose_timestamp").subscribe(-1);
         resultCounterSubscriber = nt.getTable("Mac").getIntegerTopic("result_counter").subscribe(-1);
+
+        log("Subscribers created for Mac table");
 
         tablesInitialized = false;
     }
@@ -67,20 +72,24 @@ public class PhotonVision extends SubsystemBase {
 
         // Check if topics are being published (only check once)
         if (!tablesInitialized) {
-            tablesInitialized = poseSubscriber.exists() && ambiguitySubscriber.exists()
-                && timestampSubscriber.exists() && resultCounterSubscriber.exists();
+            boolean poseExists = poseSubscriber.exists();
+            boolean ambiguityExists = ambiguitySubscriber.exists();
+            boolean timestampExists = timestampSubscriber.exists();
+            boolean counterExists = resultCounterSubscriber.exists();
+
+            log("Checking topic existence - pose: " + poseExists + ", ambiguity: " + ambiguityExists +
+                ", timestamp: " + timestampExists + ", counter: " + counterExists);
+
+            tablesInitialized = poseExists && ambiguityExists && timestampExists && counterExists;
 
             if (tablesInitialized) {
                 log("Tables Initialized - all topics now exist");
-                log("Pose Subscriber Exists: " + poseSubscriber.exists());
-                log("ambiguity Subscriber Exists: " + ambiguitySubscriber.exists());
-                log("timestamp Subscriber Exists: " + timestampSubscriber.exists());
-                log("result Subscriber Exists: " + resultCounterSubscriber.exists());
             }
         }
 
         if (tablesInitialized) {
             int count = (int) resultCounterSubscriber.get();
+            log("Tables initialized. Counter: " + count + ", Previous: " + previousCounter);
 
             // Only process if we have a valid counter and it's new data
             if (count != -1 && count > previousCounter) {
@@ -140,6 +149,6 @@ public class PhotonVision extends SubsystemBase {
 
     // im lazy
     private void log(String message) {
-        // System.out.println("[PHOTON VISION]" + message);
+        System.out.println("[PHOTON VISION] " + message);
     }
 }
