@@ -33,8 +33,8 @@ public class PhotonVision extends SubsystemBase {
     DoubleSubscriber ambiguitySubscriber;
     DoubleSubscriber timestampSubscriber;
     IntegerSubscriber resultCounterSubscriber;
-    
-    int previousCounter = 0;
+
+    int previousCounter = -1;
     double macTimeOffset = 0;
 
     boolean tablesInitialized;
@@ -65,69 +65,54 @@ public class PhotonVision extends SubsystemBase {
 
         LightningShuffleboard.setDouble("Vision", "robot_time", Utils.getCurrentTimeSeconds());
 
-        if (nt.isConnected() && !tablesInitialized) {
-            poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d()));
-            ambiguitySubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(1);
-            timestampSubscriber = nt.getTable("Mac").getDoubleTopic("pose_timestamp").subscribe(-1);
-            resultCounterSubscriber = nt.getTable("Mac").getIntegerTopic("result_counter").subscribe(-1);
-            
-            System.out.println("TABLE: " + nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d())).get());
+        // Check if topics are being published (only check once)
+        if (!tablesInitialized) {
+            tablesInitialized = poseSubscriber.exists() && ambiguitySubscriber.exists()
+                && timestampSubscriber.exists() && resultCounterSubscriber.exists();
 
-            tablesInitialized = poseSubscriber.exists() && ambiguitySubscriber.exists() && timestampSubscriber.exists() && resultCounterSubscriber.exists();
-
-            log("Pose Subscriber Exists: " + poseSubscriber.exists());
-            log("ambiguity Subscriber Exists: " + ambiguitySubscriber.exists());
-            log("timestamp Subscriber Exists: " + timestampSubscriber.exists());
-            log("result Subscriber Exists: " + resultCounterSubscriber.exists());
-
-            log("Tables Initialized: " + tablesInitialized);
+            if (tablesInitialized) {
+                log("Tables Initialized - all topics now exist");
+                log("Pose Subscriber Exists: " + poseSubscriber.exists());
+                log("ambiguity Subscriber Exists: " + ambiguitySubscriber.exists());
+                log("timestamp Subscriber Exists: " + timestampSubscriber.exists());
+                log("result Subscriber Exists: " + resultCounterSubscriber.exists());
+            }
         }
+
         if (tablesInitialized) {
             int count = (int) resultCounterSubscriber.get();
 
-            if (count >= previousCounter) {
-                log("HM");
+            // Only process if we have a valid counter and it's new data
+            if (count != -1 && count > previousCounter) {
+                log("Processing new vision data, counter: " + count);
                 previousCounter = count;
 
-                if (poseSubscriber.exists()) {
-                    Pose2d value = poseSubscriber.get();
-
-                    log("VALUE POSE: " + value);
-                    if (value.getX() < 0) {
-                        pose.set(null);
-                        return;
-                    }
-
-                    localPose = value;
+                // Read pose
+                Pose2d value = poseSubscriber.get();
+                log("VALUE POSE: " + value);
+                if (value.getX() < 0) {
+                    pose.set(null);
+                    return;
                 }
+                localPose = value;
 
-                if (ambiguitySubscriber.exists()) {
-                    double value = ambiguitySubscriber.getAsDouble();
-                    
-                    log("VALUE AMBIGUITY: " + value);
-                    if (value == 1) {
-                        pose.set(null);
-                        return;
-                    }
-
-                    ambiguity = value;
-                } else {
-                    log("hmmSmfkajhfkiadshkfhasdkfhasf");
+                // Read ambiguity
+                double ambiguityValue = ambiguitySubscriber.getAsDouble();
+                log("VALUE AMBIGUITY: " + ambiguityValue);
+                if (ambiguityValue == 1) {
+                    pose.set(null);
+                    return;
                 }
-            
+                ambiguity = ambiguityValue;
 
-                if (timestampSubscriber.exists()) {
-                    double value = timestampSubscriber.getAsDouble();
-
-                    log("VALUE TIMESTAMP: " + value);
-
-                    if (value < 0) {
-                        pose.set(null);
-                        return;
-                    }
-
-                    timestamp = value;
+                // Read timestamp
+                double timestampValue = timestampSubscriber.getAsDouble();
+                log("VALUE TIMESTAMP: " + timestampValue);
+                if (timestampValue < 0) {
+                    pose.set(null);
+                    return;
                 }
+                timestamp = timestampValue;
 
                 pose.set(new VisionInfo(timestamp, ambiguity, localPose));
             }
