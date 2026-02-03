@@ -1,5 +1,7 @@
 package frc.robot.mac;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +18,7 @@ import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 
@@ -24,11 +27,17 @@ public class MacMini {
         private record CameraInfo(PhotonCamera camera, PhotonPoseEstimator poseEstimator) {}; 
         private record VisionInfo(PhotonPipelineResult result, EstimatedRobotPose pose) {};
 
+        // nt
+        NetworkTableInstance nt = NetworkTableInstance.create();
+        NetworkTableInstance photonNT = NetworkTableInstance.create();
+
         // Cameras
         CameraInfo[] cameras;
 
         public MacMini() {
-            NetworkTableInstance photonNT = NetworkTableInstance.create();
+            nt = NetworkTableInstance.create();
+            photonNT = NetworkTableInstance.create();
+
             photonNT.setServer("localhost", 5810);
             photonNT.startClient4("mac-photon-client");
 
@@ -73,15 +82,13 @@ public class MacMini {
         public void run() {
             System.out.println("Something is running");
 
-            NetworkTableInstance nt = NetworkTableInstance.create();
             nt.setServer("10.8.62.2", 5810);
             nt.startClient4("mac-rio-client");
 
-            try {
-                Thread.sleep(2000);
-            } catch (Exception e) {
-            }
-            
+            // #region agent log
+            debugLog("MAC1", "Connecting to roboRIO", String.format("{\"server\":\"10.8.62.2:5810\",\"handle\":%d,\"connected\":%s,\"valid\":%s}",
+                nt.getHandle(), nt.isConnected(), nt.isValid()));
+            // #endregion
 
             System.out.println("Handle: " + nt.getHandle());
             System.out.println("Is connected: " + nt.isConnected());
@@ -90,18 +97,59 @@ public class MacMini {
             StructPublisher<Pose2d> posePublisher = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish();
             DoublePublisher ambiguityPublisher = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish();
             DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
+            IntegerPublisher resultCounterPublisher = nt.getTable("Mac").getIntegerTopic("result_counter").publish();
+
+            // #region agent log
+            debugLog("MAC2", "Publishers created - setting initial values", "{}");
+            // #endregion
 
             posePublisher.set(new Pose2d(-1, 0, new Rotation2d()));
             ambiguityPublisher.set(1);
             timestampPublisher.set(-1);
+            resultCounterPublisher.set(0);
 
-            VisionInfo info = getEstimatedPose();
+            int counter = 0;
+            int loopCount = 0;
 
             while (true) {
-                posePublisher.set(info.pose == null ? new Pose2d(-1, 0, new Rotation2d()): info.pose().estimatedPose.toPose2d());
+                loopCount++;
+                VisionInfo info = getEstimatedPose();
 
-                ambiguityPublisher.set(info.result()==null ? 1 : info.result().getBestTarget().poseAmbiguity);
-                timestampPublisher.set(info.result()==null ? -1 : info.result().getTimestampSeconds());
+                // #region agent log
+                if (loopCount % 1000 == 0) { // Log every ~1 second
+                    debugLog("MAC3", "Loop iteration - checking for pose", String.format("{\"infoIsNull\":%s,\"hasPose\":%s,\"hasResult\":%s,\"counter\":%d}",
+                        info == null, info != null && info.pose != null, info != null && info.result != null, counter));
+                }
+                // #endregion
+
+                if (info.pose != null && info.result != null) {
+                    Pose2d poseToPublish = info.pose().estimatedPose.toPose2d();
+                    double ambiguity = info.result().getBestTarget().poseAmbiguity;
+                    double timestamp = info.result().getTimestampSeconds();
+
+                    // #region agent log
+                    debugLog("MAC4", "Publishing data to NetworkTables", String.format("{\"pose\":{\"x\":%.3f,\"y\":%.3f},\"ambiguity\":%.3f,\"timestamp\":%.3f,\"counter\":%d}",
+                        poseToPublish.getX(), poseToPublish.getY(), ambiguity, timestamp, counter + 1));
+                    // #endregion
+
+                    posePublisher.set(poseToPublish);
+                    ambiguityPublisher.set(ambiguity);
+                    timestampPublisher.set(timestamp);
+
+                    counter++;
+                    resultCounterPublisher.set(counter);
+
+                    // #region agent log
+                    debugLog("MAC4", "Published successfully - counter set", String.format("{\"counter\":%d}", counter));
+                    // #endregion
+                } else {
+                    // #region agent log
+                    if (loopCount % 1000 == 0) { // Log every ~1 second
+                        debugLog("MAC3", "No valid pose to publish", String.format("{\"infoIsNull\":%s,\"poseIsNull\":%s,\"resultIsNull\":%s}",
+                            info == null, info != null && info.pose == null, info != null && info.result == null));
+                    }
+                    // #endregion
+                }
                 
                 try {
                     Thread.sleep(1);
@@ -111,7 +159,12 @@ public class MacMini {
             }
         }
 
-        public VisionInfo getEstimatedPose() {
+        public void shutdown() {
+            nt.close();
+            photonNT.close();
+        }
+
+        private VisionInfo getEstimatedPose() {
             if (cameras == null || cameras.length == 0) {
                 log("No cameras configured");
                 return null;
@@ -172,10 +225,11 @@ public class MacMini {
             PhotonCamera camera = cameraInfo.camera;
 
             List<PhotonPipelineResult> results = camera.getAllUnreadResults();
-
+            // log("NUMBER OF RESULTS: " + results.size());
+            // log("Camera name " + camera.getName());
             // If theres no results just skip this iteration
             if (results.isEmpty()) {
-                log(cameraInfo.camera.getName() + "'s Result is null");
+                // log(cameraInfo.camera.getName() + "'s Result is null");
                 return null;
             }
             
@@ -245,4 +299,16 @@ public class MacMini {
         private void log(String message) {
             System.out.println("[PHOTON VISION]" + message);
         }
+
+        // #region agent log
+        private void debugLog(String hypothesisId, String message, String dataJson) {
+            try (FileWriter fw = new FileWriter("/Users/zanebeidas/Programming/Robotics/Cheese/.cursor/debug.log", true)) {
+                String json = String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"%s\",\"location\":\"MacMini.java\",\"message\":\"%s\",\"data\":%s,\"timestamp\":%d}\n",
+                    hypothesisId, message.replace("\"", "\\\""), dataJson != null ? dataJson : "{}", System.currentTimeMillis());
+                fw.write(json);
+            } catch (IOException e) {
+                // Silent fail for debug logs
+            }
+        }
+        // #endregion
     }

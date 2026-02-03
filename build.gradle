@@ -65,7 +65,7 @@ task runMac(type: JavaExec) {
     group = 'application'
     description = 'Runs the Mac Mini vision processor standalone program'
 
-    classpath = files('/Users/lightning/MacRobot.jar')
+    classpath = files('./src/main/deploy/MacRobot.jar')
     mainClass = MAC_MAIN_CLASS
 
     // Depend on native library extraction
