@@ -11,9 +11,13 @@ import com.ctre.phoenix6.Utils;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.DoubleSubscriber;
+import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.IntegerSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.PubSubOption;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.networktables.StructSubscriber;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.util.shuffleboard.LightningShuffleboard;
@@ -34,6 +38,12 @@ public class PhotonVision extends SubsystemBase implements AutoCloseable {
     DoubleSubscriber timestampSubscriber;
     IntegerSubscriber resultCounterSubscriber;
 
+    // Keep publishers alive to retain topics
+    StructPublisher<Pose2d> posePublisher;
+    DoublePublisher ambiguityPublisher;
+    DoublePublisher timestampPublisher;
+    IntegerPublisher resultCounterPublisher;
+
     int previousCounter = -1;
     double macTimeOffset = 0;
 
@@ -47,39 +57,49 @@ public class PhotonVision extends SubsystemBase implements AutoCloseable {
         this.drivetrain = drivetrain;
         pose = new AtomicReference<>(null);
 
-        nt = NetworkTableInstance.create();
-        nt.setServer("localhost", 5810);
-        nt.startClient4("vision-client");
-
-        var connections = nt.getConnections();
-        log("NetworkTables instance - Handle: " + nt.getHandle() +
-            ", NetworkMode: " + nt.getNetworkMode() +
-            ", Connections: " + connections.length +
-            (connections.length > 0 ? ", First: " + connections[0].remote_id + "@" + connections[0].remote_ip : ""));
-        nt.close();
-        nt.startClient4("vision-client");
+        // Use the default NetworkTables instance (roboRIO is the server)
+        nt = NetworkTableInstance.getDefault();
 
         dummyValueSent = false;
 
-        // while(nt.getTable("Mac").getIntegerTopic("result_counter").subscribe(-1).get() < 0) {
-        //     if ((System.currentTimeMillis() - startTime) > 3000) {
-        //         nt = NetworkTableInstance.create();
-        //         nt.setServer("localhost", 5810);
-        //         nt.startClient4("akfjasdkljf");
-        //     }
-        // }
+        // Create publishers with "retained" option to ensure topics persist
+        // This helps with the race condition where MacMini might not have connected yet
+        var macTable = nt.getTable("Mac");
 
-        nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish().set(new Pose2d(-1, 0, new Rotation2d()));
-        nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish().set(1);
-        nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish().set(-1);
-        nt.getTable("Mac").getIntegerTopic("result_counter").publish().set(-1);
+        posePublisher = macTable
+            .getStructTopic("estimated_pose", Pose2d.struct)
+            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        posePublisher.set(new Pose2d(-1, 0, new Rotation2d()));
 
-        poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d()));
-        ambiguitySubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(1);
-        timestampSubscriber = nt.getTable("Mac").getDoubleTopic("pose_timestamp").subscribe(-1);
-        resultCounterSubscriber = nt.getTable("Mac").getIntegerTopic("result_counter").subscribe(-1);
+        ambiguityPublisher = macTable
+            .getDoubleTopic("pose_ambiguity")
+            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        ambiguityPublisher.set(1);
 
-        // tablesInitialized = false;
+        timestampPublisher = macTable
+            .getDoubleTopic("pose_timestamp")
+            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        timestampPublisher.set(-1);
+
+        resultCounterPublisher = macTable
+            .getIntegerTopic("result_counter")
+            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        resultCounterPublisher.set(-1);
+
+        // Now subscribe to the same topics
+        // The publishers above ensure topics exist and prevent the race condition
+        poseSubscriber = macTable
+            .getStructTopic("estimated_pose", Pose2d.struct)
+            .subscribe(new Pose2d(-1, 0, new Rotation2d()), PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        ambiguitySubscriber = macTable
+            .getDoubleTopic("pose_ambiguity")
+            .subscribe(1, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        timestampSubscriber = macTable
+            .getDoubleTopic("pose_timestamp")
+            .subscribe(-1, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        resultCounterSubscriber = macTable
+            .getIntegerTopic("result_counter")
+            .subscribe(-1, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
     }
  
     @Override
@@ -171,7 +191,20 @@ public class PhotonVision extends SubsystemBase implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        nt.close();
+        // Close publishers
+        if (posePublisher != null) posePublisher.close();
+        if (ambiguityPublisher != null) ambiguityPublisher.close();
+        if (timestampPublisher != null) timestampPublisher.close();
+        if (resultCounterPublisher != null) resultCounterPublisher.close();
+
+        // Close subscribers
+        if (poseSubscriber != null) poseSubscriber.close();
+        if (ambiguitySubscriber != null) ambiguitySubscriber.close();
+        if (timestampSubscriber != null) timestampSubscriber.close();
+        if (resultCounterSubscriber != null) resultCounterSubscriber.close();
+
+        // Note: Don't close the default NetworkTables instance
+        // It's shared across the robot program
     }
 
     // // im lazy
