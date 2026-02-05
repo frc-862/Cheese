@@ -1,7 +1,5 @@
 package frc.robot.mac;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,7 +78,7 @@ public class MacMini {
         }
 
         public void run() {
-            System.out.println("Something is running");
+            // System.out.println("Something is running");
 
             nt.setServer("10.8.62.2");  // Use default NT4 port
             nt.startClient4("mac-rio-client");
@@ -117,8 +115,8 @@ public class MacMini {
 
                 // #region agent log
                 if (loopCount % 1000 == 0) { // Log every ~1 second
-                    debugLog("MAC3", "Loop iteration - checking for pose", String.format("{\"infoIsNull\":%s,\"hasPose\":%s,\"hasResult\":%s,\"counter\":%d}",
-                        info == null, info != null && info.pose != null, info != null && info.result != null, counter));
+                    // debugLog("MAC3", "Loop iteration - checking for pose", String.format("{\"infoIsNull\":%s,\"hasPose\":%s,\"hasResult\":%s,\"counter\":%d}",
+                        // info == null, info != null && info.pose != null, info != null && info.result != null, counter));
                 }
                 // #endregion
 
@@ -128,9 +126,9 @@ public class MacMini {
                     double timestamp = info.result().getTimestampSeconds();
 
                     // #region agent log
-                    debugLog("MAC4", "Publishing data to NetworkTables", String.format("{\"pose\":{\"x\":%.3f,\"y\":%.3f},\"ambiguity\":%.3f,\"timestamp\":%.3f,\"counter\":%d}",
-                        poseToPublish.getX(), poseToPublish.getY(), ambiguity, timestamp, counter + 1));
-                    // #endregion
+                    // debugLog("MAC4", "Publishing data to NetworkTables", String.format("{\"pose\":{\"x\":%.3f,\"y\":%.3f},\"ambiguity\":%.3f,\"timestamp\":%.3f,\"counter\":%d}",
+                    //     poseToPublish.getX(), poseToPublish.getY(), ambiguity, timestamp, counter + 1));
+                    // // #endregion
 
                     posePublisher.set(poseToPublish);
                     ambiguityPublisher.set(ambiguity);
@@ -139,14 +137,14 @@ public class MacMini {
                     counter++;
                     resultCounterPublisher.set(counter);
 
-                    // #region agent log
-                    debugLog("MAC4", "Published successfully - counter set", String.format("{\"counter\":%d}", counter));
-                    // #endregion
+                    // // #region agent log
+                    // debugLog("MAC4", "Published successfully - counter set", String.format("{\"counter\":%d}", counter));
+                    // // #endregion
                 } else {
                     // #region agent log
                     if (loopCount % 1000 == 0) { // Log every ~1 second
-                        debugLog("MAC3", "No valid pose to publish", String.format("{\"infoIsNull\":%s,\"poseIsNull\":%s,\"resultIsNull\":%s}",
-                            info == null, info != null && info.pose == null, info != null && info.result == null));
+                        // debugLog("MAC3", "No valid pose to publish", String.format("{\"infoIsNull\":%s,\"poseIsNull\":%s,\"resultIsNull\":%s}",
+                        //     info == null, info != null && info.pose == null, info != null && info.result == null));
                     }
                     // #endregion
                 }
@@ -297,18 +295,18 @@ public class MacMini {
         }
 
         private void log(String message) {
-            System.out.println("[PHOTON VISION]" + message);
+            // System.out.println("[PHOTON VISION]" + message);
         }
 
         // #region agent log
         private void debugLog(String hypothesisId, String message, String dataJson) {
-            try (FileWriter fw = new FileWriter("/Users/zanebeidas/Programming/Robotics/Cheese/.cursor/debug.log", true)) {
-                String json = String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"%s\",\"location\":\"MacMini.java\",\"message\":\"%s\",\"data\":%s,\"timestamp\":%d}\n",
-                    hypothesisId, message.replace("\"", "\\\""), dataJson != null ? dataJson : "{}", System.currentTimeMillis());
-                fw.write(json);
-            } catch (IOException e) {
-                // Silent fail for debug logs
-            }
+            // try (FileWriter fw = new FileWriter("/Users/zanebeidas/Programming/Robotics/Cheese/.cursor/debug.log", true)) {
+            //     String json = String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"%s\",\"location\":\"MacMini.java\",\"message\":\"%s\",\"data\":%s,\"timestamp\":%d}\n",
+            //         hypothesisId, message.replace("\"", "\\\""), dataJson != null ? dataJson : "{}", System.currentTimeMillis());
+            //     fw.write(json);
+            // } catch (IOException e) {
+            //     // Silent fail for debug logs
+            // }
         }
         // #endregion
     }

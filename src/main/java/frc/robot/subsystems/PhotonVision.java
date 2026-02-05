@@ -18,7 +18,7 @@ import edu.wpi.first.networktables.StructSubscriber;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.util.shuffleboard.LightningShuffleboard;
 
-public class PhotonVision extends SubsystemBase {
+public class PhotonVision extends SubsystemBase implements AutoCloseable {
     private record VisionInfo(double timestamp, double ambiguity, Pose2d pose) {};
 
     // The drivetrain to add vision measurments
@@ -37,7 +37,7 @@ public class PhotonVision extends SubsystemBase {
     int previousCounter = -1;
     double macTimeOffset = 0;
 
-    boolean tablesInitialized;
+    boolean dummyValueSent;
 
     /** Creates a new PhotonVision.
      * 
@@ -47,22 +47,39 @@ public class PhotonVision extends SubsystemBase {
         this.drivetrain = drivetrain;
         pose = new AtomicReference<>(null);
 
-        nt = NetworkTableInstance.getDefault();
+        nt = NetworkTableInstance.create();
+        nt.setServer("localhost", 5810);
+        nt.startClient4("vision-client");
 
         var connections = nt.getConnections();
         log("NetworkTables instance - Handle: " + nt.getHandle() +
             ", NetworkMode: " + nt.getNetworkMode() +
             ", Connections: " + connections.length +
             (connections.length > 0 ? ", First: " + connections[0].remote_id + "@" + connections[0].remote_ip : ""));
+        nt.close();
+        nt.startClient4("vision-client");
+
+        dummyValueSent = false;
+
+        // while(nt.getTable("Mac").getIntegerTopic("result_counter").subscribe(-1).get() < 0) {
+        //     if ((System.currentTimeMillis() - startTime) > 3000) {
+        //         nt = NetworkTableInstance.create();
+        //         nt.setServer("localhost", 5810);
+        //         nt.startClient4("akfjasdkljf");
+        //     }
+        // }
+
+        nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish().set(new Pose2d(-1, 0, new Rotation2d()));
+        nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish().set(1);
+        nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish().set(-1);
+        nt.getTable("Mac").getIntegerTopic("result_counter").publish().set(-1);
 
         poseSubscriber = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).subscribe(new Pose2d(-1, 0, new Rotation2d()));
         ambiguitySubscriber = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").subscribe(1);
         timestampSubscriber = nt.getTable("Mac").getDoubleTopic("pose_timestamp").subscribe(-1);
         resultCounterSubscriber = nt.getTable("Mac").getIntegerTopic("result_counter").subscribe(-1);
 
-        log("Subscribers created for Mac table");
-
-        tablesInitialized = false;
+        // tablesInitialized = false;
     }
  
     @Override
@@ -71,48 +88,39 @@ public class PhotonVision extends SubsystemBase {
         double ambiguity = 1;
         double timestamp = -1;
 
+        if (nt.isConnected() && !dummyValueSent) {
+            nt.getTable("Foo").getBooleanTopic("dummy").publish().set(true);
+            dummyValueSent = true;
+        }
+
         LightningShuffleboard.setDouble("Vision", "robot_time", Utils.getCurrentTimeSeconds());
 
         // Check if topics are being published (only check once)
-        if (!tablesInitialized) {
-            boolean poseExists = poseSubscriber.exists();
-            boolean ambiguityExists = ambiguitySubscriber.exists();
-            boolean timestampExists = timestampSubscriber.exists();
-            boolean counterExists = resultCounterSubscriber.exists();
+        // if (!tablesInitialized) {
+        //     boolean poseExists = poseSubscriber.isValid();
+        //     boolean ambiguityExists = ambiguitySubscriber.isValid();
+        //     boolean timestampExists = timestampSubscriber.isValid();
+        //     boolean counterExists = resultCounterSubscriber.isValid();
 
-            log("Checking topic existence - pose: " + poseExists + ", ambiguity: " + ambiguityExists +
-                ", timestamp: " + timestampExists + ", counter: " + counterExists);
+        //     // log("Checking topic existence - pose: " + poseExists + ", ambiguity: " + ambiguityExists +
+        //     //     ", timestamp: " + timestampExists + ", counter: " + counterExists);
 
-            tablesInitialized = poseExists && ambiguityExists && timestampExists && counterExists;
+        //     tablesInitialized = poseExists && ambiguityExists && timestampExists && counterExists;
+        // }
 
-            if (tablesInitialized) {
-                log("Tables Initialized - all topics now exist");
-
-                // Debug: Try reading the counter value directly from the table
-                var counterEntry = nt.getTable("Mac").getEntry("result_counter");
-                log("Direct table read - Counter exists: " + counterEntry.exists() +
-                    ", Value: " + counterEntry.getInteger(-999));
-            }
-        }
-
-        if (tablesInitialized) {
-            // Direct read comparison
-            var counterEntry = nt.getTable("Mac").getEntry("result_counter");
-            long directValue = counterEntry.getInteger(-999);
+        // Direct read comparison
 
             int count = (int) resultCounterSubscriber.get();
-            long counterTs = resultCounterSubscriber.getLastChange();
-            log("Counter - Subscriber: " + count + ", Direct: " + directValue +
-                ", LastChange: " + counterTs + ", Previous: " + previousCounter);
+            // log("Counter - Subscriber: " + count + ", Direct: " + directValue +
+            //     ", LastChange: " + counterTs + ", Previous: " + previousCounter);
 
-            // Only process if we have a valid counter and it's new data
+            // // Only process if we have a valid counter and it's new data
             if (count != -1 && count > previousCounter) {
-                log("Processing new vision data, counter: " + count);
                 previousCounter = count;
 
                 // Read pose
                 Pose2d value = poseSubscriber.get();
-                log("VALUE POSE: " + value);
+
                 if (value.getX() < 0) {
                     pose.set(null);
                     return;
@@ -121,7 +129,7 @@ public class PhotonVision extends SubsystemBase {
 
                 // Read ambiguity
                 double ambiguityValue = ambiguitySubscriber.getAsDouble();
-                log("VALUE AMBIGUITY: " + ambiguityValue);
+
                 if (ambiguityValue == 1) {
                     pose.set(null);
                     return;
@@ -130,7 +138,7 @@ public class PhotonVision extends SubsystemBase {
 
                 // Read timestamp
                 double timestampValue = timestampSubscriber.getAsDouble();
-                log("VALUE TIMESTAMP: " + timestampValue);
+
                 if (timestampValue < 0) {
                     pose.set(null);
                     return;
@@ -158,11 +166,16 @@ public class PhotonVision extends SubsystemBase {
                     VecBuilder.fill(bestTagAmbiguity, bestTagAmbiguity, bestTagAmbiguity));
 
             }
-        }
+            
     }
 
-    // im lazy
-    private void log(String message) {
-        System.out.println("[PHOTON VISION] " + message);
+    @Override
+    public void close() throws Exception {
+        nt.close();
     }
+
+    // // im lazy
+    // private void log(String message) {
+    //     System.out.println("[PHOTON VISION] " + message);
+    // }
 }
