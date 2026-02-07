@@ -4,7 +4,9 @@ import java.util.List;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
+import static edu.wpi.first.units.Units.Inches;
 
 public class VisionConstants {
 
@@ -22,18 +24,18 @@ public class VisionConstants {
     public static final CameraConstant[] CAMERA_CONSTANTS = new CameraConstant[] {
         new CameraConstant("leftCam", 
             new Transform3d(
-                // Inches.of(11.25),
-                // Inches.of(-11.25),   // RIGHT side
-                // Inches.of(10.5),
-                // new Rotation3d(0, 15, -45)
+                Inches.of(11.25),
+                Inches.of(11.25),   // RIGHT side
+                Inches.of(10.5),
+                new Rotation3d(0, -15, -45)
             )),
 
         new CameraConstant("rightCam",
             new Transform3d(
-                // Inches.of(11.25),
-                // Inches.of(11.25),    // LEFT side
-                // Inches.of(10.5),
-                // new Rotation3d(0, 15, 45)
+                Inches.of(11.25),
+                Inches.of(-11.25),    // LEFT side
+                Inches.of(10.5),
+                new Rotation3d(0, -15, 45)
                 )
             ),
     };

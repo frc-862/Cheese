@@ -4,6 +4,9 @@
 
 package frc.robot.subsystems;
 
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.ctre.phoenix6.Utils;
@@ -11,18 +14,11 @@ import com.ctre.phoenix6.Utils;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.DoubleSubscriber;
-import edu.wpi.first.networktables.IntegerPublisher;
-import edu.wpi.first.networktables.IntegerSubscriber;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.PubSubOption;
-import edu.wpi.first.networktables.StructPublisher;
-import edu.wpi.first.networktables.StructSubscriber;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.util.shuffleboard.LightningShuffleboard;
 
-public class PhotonVision extends SubsystemBase implements AutoCloseable {
+public class PhotonVision extends SubsystemBase {
+    public record UnpackedData(Pose2d pose, double ambiguity, double timestamp, double counter) {}
     private record VisionInfo(double timestamp, double ambiguity, Pose2d pose) {};
 
     // The drivetrain to add vision measurments
@@ -31,75 +27,51 @@ public class PhotonVision extends SubsystemBase implements AutoCloseable {
     // Atomic
     AtomicReference<VisionInfo> pose;
 
-    // NT
-    NetworkTableInstance nt;
-    StructSubscriber<Pose2d> poseSubscriber;
-    DoubleSubscriber ambiguitySubscriber;
-    DoubleSubscriber timestampSubscriber;
-    IntegerSubscriber resultCounterSubscriber;
-
-    // Keep publishers alive to retain topics
-    StructPublisher<Pose2d> posePublisher;
-    DoublePublisher ambiguityPublisher;
-    DoublePublisher timestampPublisher;
-    IntegerPublisher resultCounterPublisher;
-
     int previousCounter = -1;
     double macTimeOffset = 0;
 
     boolean dummyValueSent;
+
+    DatagramSocket socket;
 
     /** Creates a new PhotonVision.
      * 
      * @param drivetrain The main drivetrain on the robot
      */
     public PhotonVision(Swerve drivetrain) {
+        Thread receiveThread;
+
+        try {
+            // Bind to the port
+            socket = new DatagramSocket(12345); 
+            
+            // Start a separate thread to receive packets
+            receiveThread = new Thread(() -> {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        byte[] receiveData = new byte[48];
+                        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                        socket.receive(receivePacket); // Blocks this thread, not the robot
+                        
+                        UnpackedData data = parseBinaryPacket(receivePacket);
+                        // Store data atomically
+                        pose.set(new VisionInfo(data.timestamp(), data.ambiguity(), data.pose()));
+                        
+                    } catch (Exception e) {
+                        log("Thread Error: " + e.getMessage());
+                    }
+                }
+            });
+
+            receiveThread.start();
+        } catch (Exception e) {
+            log("*** ERROR MAKING DATAGRAM SOCKET ***" + e);
+        }
+        
         this.drivetrain = drivetrain;
         pose = new AtomicReference<>(null);
 
-        // Use the default NetworkTables instance (roboRIO is the server)
-        nt = NetworkTableInstance.getDefault();
-
-        dummyValueSent = false;
-
-        // Create publishers with "retained" option to ensure topics persist
-        // This helps with the race condition where MacMini might not have connected yet
-        var macTable = nt.getTable("Mac");
-
-        posePublisher = macTable
-            .getStructTopic("estimated_pose", Pose2d.struct)
-            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        posePublisher.set(new Pose2d(-1, 0, new Rotation2d()));
-
-        ambiguityPublisher = macTable
-            .getDoubleTopic("pose_ambiguity")
-            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        ambiguityPublisher.set(1);
-
-        timestampPublisher = macTable
-            .getDoubleTopic("pose_timestamp")
-            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        timestampPublisher.set(-1);
-
-        resultCounterPublisher = macTable
-            .getIntegerTopic("result_counter")
-            .publish(PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        resultCounterPublisher.set(-1);
-
-        // Now subscribe to the same topics
-        // The publishers above ensure topics exist and prevent the race condition
-        poseSubscriber = macTable
-            .getStructTopic("estimated_pose", Pose2d.struct)
-            .subscribe(new Pose2d(-1, 0, new Rotation2d()), PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        ambiguitySubscriber = macTable
-            .getDoubleTopic("pose_ambiguity")
-            .subscribe(1, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        timestampSubscriber = macTable
-            .getDoubleTopic("pose_timestamp")
-            .subscribe(-1, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
-        resultCounterSubscriber = macTable
-            .getIntegerTopic("result_counter")
-            .subscribe(-1, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
+        
     }
  
     @Override
@@ -108,107 +80,56 @@ public class PhotonVision extends SubsystemBase implements AutoCloseable {
         double ambiguity = 1;
         double timestamp = -1;
 
-        if (nt.isConnected() && !dummyValueSent) {
-            nt.getTable("Foo").getBooleanTopic("dummy").publish().set(true);
-            dummyValueSent = true;
-        }
-
         LightningShuffleboard.setDouble("Vision", "robot_time", Utils.getCurrentTimeSeconds());
 
-        // Check if topics are being published (only check once)
-        // if (!tablesInitialized) {
-        //     boolean poseExists = poseSubscriber.isValid();
-        //     boolean ambiguityExists = ambiguitySubscriber.isValid();
-        //     boolean timestampExists = timestampSubscriber.isValid();
-        //     boolean counterExists = resultCounterSubscriber.isValid();
+        if (pose.get() != null && pose.get().pose != null && pose.get().ambiguity < 1 && pose.get().timestamp > 0) {
+            VisionInfo updatedPose = pose.getAndSet(null);
 
-        //     // log("Checking topic existence - pose: " + poseExists + ", ambiguity: " + ambiguityExists +
-        //     //     ", timestamp: " + timestampExists + ", counter: " + counterExists);
-
-        //     tablesInitialized = poseExists && ambiguityExists && timestampExists && counterExists;
-        // }
-
-        // Direct read comparison
-
-            int count = (int) resultCounterSubscriber.get();
-            // log("Counter - Subscriber: " + count + ", Direct: " + directValue +
-            //     ", LastChange: " + counterTs + ", Previous: " + previousCounter);
-
-            // // Only process if we have a valid counter and it's new data
-            if (count != -1 && count > previousCounter) {
-                previousCounter = count;
-
-                // Read pose
-                Pose2d value = poseSubscriber.get();
-
-                if (value.getX() < 0) {
-                    pose.set(null);
-                    return;
-                }
-                localPose = value;
-
-                // Read ambiguity
-                double ambiguityValue = ambiguitySubscriber.getAsDouble();
-
-                if (ambiguityValue == 1) {
-                    pose.set(null);
-                    return;
-                }
-                ambiguity = ambiguityValue;
-
-                // Read timestamp
-                double timestampValue = timestampSubscriber.getAsDouble();
-
-                if (timestampValue < 0) {
-                    pose.set(null);
-                    return;
-                }
-                timestamp = timestampValue;
-
-                pose.set(new VisionInfo(timestamp, ambiguity, localPose));
+            if (macTimeOffset == 0) {
+                macTimeOffset = Utils.getCurrentTimeSeconds() - updatedPose.timestamp;
             }
 
-            if (pose.get() != null && pose.get().pose != null && pose.get().ambiguity < 1 && pose.get().timestamp > 0) {
-                VisionInfo updatedPose = pose.getAndSet(null);
+            double bestTagAmbiguity = updatedPose.ambiguity() * 1.5;
 
-                if (macTimeOffset == 0) {
-                    macTimeOffset = Utils.getCurrentTimeSeconds() - updatedPose.timestamp;
-                }
-
-                double bestTagAmbiguity = updatedPose.ambiguity() * 1.5;
-
-                LightningShuffleboard.setPose2d("Vision", "updated pose", updatedPose.pose);
-                LightningShuffleboard.setDouble("Vision", "mac time offset", macTimeOffset);
-                
-                drivetrain.addVisionMeasurement(
-                    updatedPose.pose(), 
-                    updatedPose.timestamp + macTimeOffset, 
-                    VecBuilder.fill(bestTagAmbiguity, bestTagAmbiguity, bestTagAmbiguity));
-
-            }
+            LightningShuffleboard.setPose2d("Vision", "updated pose", updatedPose.pose);
+            LightningShuffleboard.setDouble("Vision", "mac time offset", macTimeOffset);
             
+            drivetrain.addVisionMeasurement(
+                updatedPose.pose(), 
+                updatedPose.timestamp + macTimeOffset, 
+                VecBuilder.fill(bestTagAmbiguity, bestTagAmbiguity, bestTagAmbiguity));
+
+        }     
+    }
+    // im lazy
+    private void log(String message) {
+        System.out.println("[PHOTON VISION] " + message);
     }
 
-    @Override
-    public void close() throws Exception {
-        // Close publishers
-        if (posePublisher != null) posePublisher.close();
-        if (ambiguityPublisher != null) ambiguityPublisher.close();
-        if (timestampPublisher != null) timestampPublisher.close();
-        if (resultCounterPublisher != null) resultCounterPublisher.close();
+    public UnpackedData parseBinaryPacket(DatagramPacket packet) {
+        byte[] data = packet.getData();
+        
+        // Safety check for length
+        if (packet.getLength() < 48) {
+            throw new IllegalArgumentException("Packet too small");
+        }
 
-        // Close subscribers
-        if (poseSubscriber != null) poseSubscriber.close();
-        if (ambiguitySubscriber != null) ambiguitySubscriber.close();
-        if (timestampSubscriber != null) timestampSubscriber.close();
-        if (resultCounterSubscriber != null) resultCounterSubscriber.close();
+        log("Unpacking data");
 
-        // Note: Don't close the default NetworkTables instance
-        // It's shared across the robot program
+        // Wrap the data in a ByteBuffer
+        ByteBuffer buffer = ByteBuffer.wrap(data, 0, 48);
+
+        // Read doubles in the same order they were packed
+        double x = buffer.getDouble();
+        double y = buffer.getDouble();
+        double rotRadians = buffer.getDouble();
+        double ambiguity = buffer.getDouble();
+        double timestamp = buffer.getDouble();
+        double counter = buffer.getDouble();
+
+        Pose2d pose;
+        pose = new Pose2d(x, y, new Rotation2d(rotRadians));
+        
+        return new UnpackedData(pose, ambiguity, timestamp, counter);
     }
-
-    // // im lazy
-    // private void log(String message) {
-    //     System.out.println("[PHOTON VISION] " + message);
-    // }
 }

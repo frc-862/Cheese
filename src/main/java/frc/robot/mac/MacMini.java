@@ -1,5 +1,10 @@
 package frc.robot.mac;
 
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,11 +19,8 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StructPublisher;
+
 
 public class MacMini {
         // Camera info
@@ -26,15 +28,17 @@ public class MacMini {
         private record VisionInfo(PhotonPipelineResult result, EstimatedRobotPose pose) {};
 
         // nt
-        NetworkTableInstance nt = NetworkTableInstance.create();
         NetworkTableInstance photonNT = NetworkTableInstance.create();
 
         // Cameras
         CameraInfo[] cameras;
 
+        DatagramSocket socket;
+
         public MacMini() {
-            nt = NetworkTableInstance.create();
-            photonNT = NetworkTableInstance.create();
+            try {
+                socket = new DatagramSocket();
+            } catch (Exception e) {}
 
             photonNT.setServer("localhost", 5810);
             photonNT.startClient4("mac-photon-client");
@@ -80,73 +84,41 @@ public class MacMini {
         public void run() {
             // System.out.println("Something is running");
 
-            nt.setServer("10.8.62.2");  // Use default NT4 port
-            nt.startClient4("mac-rio-client");
-
-            // #region agent log
-            debugLog("MAC1", "Connecting to roboRIO", String.format("{\"server\":\"10.8.62.2:5810\",\"handle\":%d,\"connected\":%s,\"valid\":%s}",
-                nt.getHandle(), nt.isConnected(), nt.isValid()));
-            // #endregion
-
-            System.out.println("Handle: " + nt.getHandle());
-            System.out.println("Is connected: " + nt.isConnected());
-            System.out.println("Is valued: " + nt.isValid());
-
-            StructPublisher<Pose2d> posePublisher = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish();
-            DoublePublisher ambiguityPublisher = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish();
-            DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
-            IntegerPublisher resultCounterPublisher = nt.getTable("Mac").getIntegerTopic("result_counter").publish();
-
-            // #region agent log
-            debugLog("MAC2", "Publishers created - setting initial values", "{}");
-            // #endregion
-
-            posePublisher.set(new Pose2d(-1, 0, new Rotation2d()));
-            ambiguityPublisher.set(1);
-            timestampPublisher.set(-1);
-            resultCounterPublisher.set(0);
+            // StructPublisher<Pose2d> posePublisher = nt.getTable("Mac").getStructTopic("estimated_pose", Pose2d.struct).publish();
+            // DoublePublisher ambiguityPublisher = nt.getTable("Mac").getDoubleTopic("pose_ambiguity").publish();
+            // DoublePublisher timestampPublisher = nt.getTable("Mac").getDoubleTopic("pose_timestamp").publish();
+            // IntegerPublisher resultCounterPublisher = nt.getTable("Mac").getIntegerTopic("result_counter").publish();
 
             int counter = 0;
-            int loopCount = 0;
 
             while (true) {
-                loopCount++;
                 VisionInfo info = getEstimatedPose();
-
-                // #region agent log
-                if (loopCount % 1000 == 0) { // Log every ~1 second
-                    // debugLog("MAC3", "Loop iteration - checking for pose", String.format("{\"infoIsNull\":%s,\"hasPose\":%s,\"hasResult\":%s,\"counter\":%d}",
-                        // info == null, info != null && info.pose != null, info != null && info.result != null, counter));
-                }
-                // #endregion
 
                 if (info.pose != null && info.result != null) {
                     Pose2d poseToPublish = info.pose().estimatedPose.toPose2d();
                     double ambiguity = info.result().getBestTarget().poseAmbiguity;
                     double timestamp = info.result().getTimestampSeconds();
 
-                    // #region agent log
-                    // debugLog("MAC4", "Publishing data to NetworkTables", String.format("{\"pose\":{\"x\":%.3f,\"y\":%.3f},\"ambiguity\":%.3f,\"timestamp\":%.3f,\"counter\":%d}",
-                    //     poseToPublish.getX(), poseToPublish.getY(), ambiguity, timestamp, counter + 1));
-                    // // #endregion
-
-                    posePublisher.set(poseToPublish);
-                    ambiguityPublisher.set(ambiguity);
-                    timestampPublisher.set(timestamp);
-
                     counter++;
-                    resultCounterPublisher.set(counter);
-
-                    // // #region agent log
-                    // debugLog("MAC4", "Published successfully - counter set", String.format("{\"counter\":%d}", counter));
-                    // // #endregion
-                } else {
-                    // #region agent log
-                    if (loopCount % 1000 == 0) { // Log every ~1 second
-                        // debugLog("MAC3", "No valid pose to publish", String.format("{\"infoIsNull\":%s,\"poseIsNull\":%s,\"resultIsNull\":%s}",
-                        //     info == null, info != null && info.pose == null, info != null && info.result == null));
+                    try {
+                         DatagramPacket packet = getBinaryPacket(poseToPublish, ambiguity, timestamp, counter);
+                         socket.send(packet);
+                        System.out.println("PACKET SENT");
+                         
+                    } catch (Exception e) {
+                        log("Failed to send packet" + e);
+                        
                     }
-                    // #endregion
+
+                    
+
+                    // posePublisher.set(poseToPublish);
+                    // ambiguityPublisher.set(ambiguity);
+                    // timestampPublisher.set(timestamp);
+
+
+                    // resultCounterPublisher.set(counter);
+
                 }
                 
                 try {
@@ -158,7 +130,6 @@ public class MacMini {
         }
 
         public void shutdown() {
-            nt.close();
             photonNT.close();
         }
 
@@ -298,15 +269,52 @@ public class MacMini {
             // System.out.println("[PHOTON VISION]" + message);
         }
 
-        // #region agent log
-        private void debugLog(String hypothesisId, String message, String dataJson) {
-            // try (FileWriter fw = new FileWriter("/Users/zanebeidas/Programming/Robotics/Cheese/.cursor/debug.log", true)) {
-            //     String json = String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"%s\",\"location\":\"MacMini.java\",\"message\":\"%s\",\"data\":%s,\"timestamp\":%d}\n",
-            //         hypothesisId, message.replace("\"", "\\\""), dataJson != null ? dataJson : "{}", System.currentTimeMillis());
-            //     fw.write(json);
-            // } catch (IOException e) {
-            //     // Silent fail for debug logs
+        private DatagramPacket getBinaryPacket(Pose2d pose, double ambiguity, double timestamp, double counter) throws IllegalArgumentException, UnknownHostException {// 8 + 8 + 8 + 8 + 8 bytes
+            ByteBuffer buffer = ByteBuffer.allocate(48);
+
+            buffer.putDouble(pose.getX());
+            buffer.putDouble(pose.getY());
+            buffer.putDouble(pose.getRotation().getRadians());
+            buffer.putDouble(ambiguity);
+            buffer.putDouble(timestamp);
+            buffer.putDouble(counter);
+
+            // // Pack pose X
+            // long xBits = Double.doubleToLongBits(pose.getX());
+            // for (int i = 0; i < 8; i++) {
+            //     data[i] = (byte) ((xBits >> (8 * i)) & 0xFF);
             // }
+            
+            // // Pack pose Y
+            // long yBits = Double.doubleToLongBits(pose.getY());
+            // for (int i = 0; i < 8; i++) {
+            //     data[8 + i] = (byte) ((yBits >> (8 * i)) & 0xFF);
+            // }
+            
+            // // Pack rotation (in radians)
+            // long rotationBits = Double.doubleToLongBits(pose.getRotation().getRadians());
+            // for (int i = 0; i < 8; i++) {
+            //     data[16 + i] = (byte) ((rotationBits >> (8 * i)) & 0xFF);
+            // }
+            
+            // // Pack ambiguity
+            // long ambiguityBits = Double.doubleToLongBits(ambiguity);
+            // for (int i = 0; i < 8; i++) {
+            //     data[24 + i] = (byte) ((ambiguityBits >> (8 * i)) & 0xFF);
+            // }
+            
+            // // Pack timestamp
+            // long timestampBits = Double.doubleToLongBits(timestamp);
+            // for (int i = 0; i < 8; i++) {
+            //     data[32 + i] = (byte) ((timestampBits >> (8 * i)) & 0xFF);
+            // }
+
+            // // Pack timestamp
+            // long counterBits = Double.doubleToLongBits(counter);
+            // for (int i = 0; i < 8; i++) {
+            //     data[40 + i] = (byte) ((counterBits >> (8 * i)) & 0xFF);
+            // }
+            byte[] data = buffer.array();
+            return new DatagramPacket(data, data.length, InetAddress.getByName("10.8.62.2"), 12345);
         }
-        // #endregion
     }
