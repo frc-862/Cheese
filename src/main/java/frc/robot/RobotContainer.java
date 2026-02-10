@@ -5,12 +5,14 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -33,6 +35,7 @@ import frc.util.leds.Color;
 import frc.util.leds.LEDBehaviorFactory;
 import frc.util.leds.LEDSubsystem;
 import frc.util.shuffleboard.DemoShuffleboard;
+import frc.util.shuffleboard.LightningShuffleboard;
 
 public class RobotContainer extends LightningContainer {
 
@@ -154,8 +157,11 @@ public class RobotContainer extends LightningContainer {
     @Override
     protected void configureLEDs() {
         leds.setDefaultBehavior(LEDBehaviorFactory.SwirlBehabior(LEDConstants.allLEDs, 10, 5, Color.BLUE, Color.ORANGE));
+        LightningShuffleboard.setString("LEDs", "State Names", LED_STATES.values().toString());
 
         leds.setBehavior(LED_STATES.ERROR.ID(), LEDBehaviorFactory.BlinkColorBehavior(LEDConstants.allLEDs, 2, Color.RED));
+
+        leds.setBehavior(LED_STATES.VISION_BAD.ID(), LEDBehaviorFactory.SolidColorBehavior(LEDConstants.allLEDs, Color.RED));
 
         leds.setBehavior(LED_STATES.SINGLE_CONTROLLER.ID(), LEDBehaviorFactory.SolidColorBehavior(LEDConstants.strip2, Color.YELLOW).and(LEDBehaviorFactory.SolidColorBehavior(LEDConstants.strip4, Color.YELLOW)));
 
@@ -173,6 +179,10 @@ public class RobotContainer extends LightningContainer {
 			() -> driver.getYButton()));
 
         new Trigger(DriverStation::isTest).whileTrue(leds.enableState(LED_STATES.TEST.ID()));
+
+        CommandScheduler.getInstance().schedule(leds.setState(LED_STATES.VISION_BAD.ID(), true));
+
+        new Trigger(() -> (drivetrain.getPose().getTranslation().getDistance(new Translation2d()) > 0.1)).onTrue(leds.setState(LED_STATES.VISION_BAD.ID(), false));
 
         new Trigger(() -> DriverStation.isAutonomous() && DriverStation.isEnabled()).whileTrue(leds.enableState(LED_STATES.AUTO.ID()));
     }

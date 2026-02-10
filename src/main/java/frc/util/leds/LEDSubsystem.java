@@ -5,8 +5,10 @@
 package frc.util.leds;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.StartEndCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.util.shuffleboard.LightningShuffleboard;
 
 public class LEDSubsystem extends SubsystemBase {
   private final LEDController leds;
@@ -78,6 +80,17 @@ public class LEDSubsystem extends SubsystemBase {
   }
 
   /**
+   * Creates a command that sets a specific state to a specific value.
+   * 
+   * @param stateID The ID of the state to set.
+   * @param enabled The value to set the state to.
+   * @return A command that sets the specified state to the specified value.
+   */
+  public Command setState(int stateID, boolean enabled) {
+    return new InstantCommand(() -> { enabledStates[stateID] = enabled; }).ignoringDisable(true);
+  }
+
+  /**
    * Gets if a specific state is enabled.
    * 
    * @param stateID The ID of the state to get.
@@ -98,6 +111,8 @@ public class LEDSubsystem extends SubsystemBase {
     }
 
     leds.apply();
+
+    LightningShuffleboard.setBoolArray("LEDs", "Enabled States", enabledStates);
   }
 
 }
